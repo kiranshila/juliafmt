@@ -1,0 +1,48 @@
+program = { SOI ~ NEWLINE* ~ (statement ~ NEWLINE*)*  ~ EOI}
+statement = { expression ~ terminator }
+expression = { string | character | number | variable }
+terminator = { NEWLINE | SEMICOLON | EOI}
+number = { exponential | float | integer }
+
+integer = @{ "-"? ~ (( "0x" ~ ASCII_HEX_DIGIT+) | ( "0o" ~ ASCII_OCT_DIGIT+) | ( "0b" ~ ASCII_BIN_DIGIT+) | ASCII_DIGIT+) }
+float = @{ "-"? ~ ((ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*) | (ASCII_DIGIT* ~ "." ~ ASCII_DIGIT+))}
+exponential = @{ (float | integer) ~ ("e" | "f") ~ integer }
+string = @{ "\"" ~ ( "\\\"" | (!"\"" ~ ANY) )* ~ "\"" }
+character = @{ "'" ~ "\\"? ~ ANY ~ "'" }
+reserved = { BEGIN | BREAK | CATCH | CONST | CONTINUE | DO | ELSE | ELSEIF | END | EXPORT | FALSE | FINALLY | FOR | FUNCTION |
+             GLOBAL | IF | IMPORT | LET | LOCAL | MACRO | MODULE | QUOTE | RETURN | STRUCT | TRUE | TRY | USING | WHILE}
+variable = @{ !reserved ~ (ASCII_ALPHA | "_" | VAR_UNI) ~ (ASCII_ALPHANUMERIC | "_" | "!" | VAR_UNI)* }
+
+WHITESPACE = { " " | "\t" }
+COMMENT = { "#=" ~ (!"=#" ~ ANY)* ~ "=#" }
+SEMICOLON = { ";" }
+BAREMODULE = { "baremodule" }
+BEGIN = { "begin" }
+BREAK = { "break" }
+CATCH = { "catch" }
+CONST = { "const" }
+CONTINUE = { "continue" }
+DO = { "do" }
+ELSE = { "else" }
+ELSEIF = { "elseif" }
+END = { "end" }
+EXPORT = { "export" }
+FALSE = { "false" }
+FINALLY = { "finally" }
+FOR = { "for" }
+FUNCTION = { "function" }
+GLOBAL = { "global" }
+IF = { "if" }
+IMPORT = { "import" }
+LET = { "let" }
+LOCAL = { "local" }
+MACRO = { "macro" }
+MODULE = { "module" }
+QUOTE = { "quote" }
+RETURN = { "return" }
+STRUCT = { "struct" }
+TRUE = { "true" }
+TRY = { "try" }
+USING = { "using" }
+WHILE = { "while" }
+VAR_UNI = { '\u{00}'..'\u{10FFFF}' }

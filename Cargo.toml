@@ -1,0 +1,8 @@
+[package]
+edition = "2021"
+name = "juliafmt"
+version = "0.1.0"
+[dependencies]
+clap = { version = "3.0", features = ["derive","color"]}
+pest = "2.1"
+pest_derive = "2.1"
