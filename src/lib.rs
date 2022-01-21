@@ -27,6 +27,7 @@ impl Default for IndentStyle {
     }
 }
 
-pub fn format(input: &str, config: &Config) -> Result<String, ()> {
-    unimplemented!()
+pub fn format(input: &str, config: &Config) -> Result<String, pest::error::Error<Rule>> {
+    let ast = JuliaParser::parse(Rule::program, input)?;
+    Ok(format!("{:?}", ast))
 }

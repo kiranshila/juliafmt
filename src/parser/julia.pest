@@ -1,7 +1,7 @@
-program = { SOI ~ NEWLINE* ~ (statement ~ NEWLINE*)*  ~ EOI}
+program = { SOI ~ NEWLINE* ~ statement_sequence ~ NEWLINE* ~ EOI}
 statement = { expression ~ terminator }
 expression = { block | variable | string | character | number | identifiable_operator }
-terminator = { SEMICOLON | NEWLINE | EOI}
+terminator = { SEMICOLON | NEWLINE}
 number = { exponential | float | integer }
 
 integer = @{ "-"? ~ (( "0x" ~ ASCII_HEX_DIGIT+) | ( "0o" ~ ASCII_OCT_DIGIT+) | ( "0b" ~ ASCII_BIN_DIGIT+) | ASCII_DIGIT+) }
@@ -15,8 +15,8 @@ variable = @{ !reserved ~ (ASCII_ALPHA | "_" | VAR_UNI) ~ (ASCII_ALPHANUMERIC | 
 identifiable_operator = { IDENTIFIABLE_ASSIGNMENT | PAIR | COMPARISON | PIPE | COLON | PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
 
 block = { block_generic }
-
-block_generic = { BEGIN ~ NEWLINE* ~ (statement ~ NEWLINE*)* ~ NEWLINE* ~ END }
+statement_sequence = { expression ~ (terminator ~ NEWLINE* ~ expression)* ~ terminator? ~ NEWLINE* }
+block_generic = { BEGIN ~ NEWLINE* ~ statement_sequence ~ NEWLINE* ~ END }
 
 // -- Literals -- //
 WHITESPACE = _{ " " | "\t" }
