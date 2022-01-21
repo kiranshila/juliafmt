@@ -1,7 +1,7 @@
 program = { SOI ~ NEWLINE* ~ (statement ~ NEWLINE*)*  ~ EOI}
 statement = { expression ~ terminator }
-expression = { string | character | number | variable | identifiable_operator }
-terminator = { NEWLINE | SEMICOLON | EOI}
+expression = { block | variable | string | character | number | identifiable_operator }
+terminator = { SEMICOLON | NEWLINE | EOI}
 number = { exponential | float | integer }
 
 integer = @{ "-"? ~ (( "0x" ~ ASCII_HEX_DIGIT+) | ( "0o" ~ ASCII_OCT_DIGIT+) | ( "0b" ~ ASCII_BIN_DIGIT+) | ASCII_DIGIT+) }
@@ -14,12 +14,16 @@ reserved = { BEGIN | BREAK | CATCH | CONST | CONTINUE | DO | ELSE | ELSEIF | END
 variable = @{ !reserved ~ (ASCII_ALPHA | "_" | VAR_UNI) ~ (ASCII_ALPHANUMERIC | "_" | "!" | VAR_UNI)* }
 identifiable_operator = { IDENTIFIABLE_ASSIGNMENT | PAIR | COMPARISON | PIPE | COLON | PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
 
+block = { block_generic }
+
+block_generic = { BEGIN ~ NEWLINE* ~ (statement ~ NEWLINE*)* ~ NEWLINE* ~ END }
+
 // -- Literals -- //
-WHITESPACE = { " " | "\t" }
+WHITESPACE = _{ " " | "\t" }
 COMMENT = { "#=" ~ (!"=#" ~ ANY)* ~ "=#" }
 SEMICOLON = { ";" }
 BAREMODULE = { "baremodule" }
-BEGIN = { "begin" }
+BEGIN = _{ "begin" }
 BREAK = { "break" }
 CATCH = { "catch" }
 CONST = { "const" }
@@ -27,7 +31,7 @@ CONTINUE = { "continue" }
 DO = { "do" }
 ELSE = { "else" }
 ELSEIF = { "elseif" }
-END = { "end" }
+END = _{ "end" }
 EXPORT = { "export" }
 FALSE = { "false" }
 FINALLY = { "finally" }
@@ -108,3 +112,12 @@ DOT = { "." }
 TRANS = { ".\'" }
 CTRANS = { "\'" }
 VARARG = { "..." }
+AT = { "@" }
+// --- Syntax --- //
+LEFT_PAREN = { "(" }
+RIGHT_PAREN = { ")" }
+LEFT_BRACKET = { "[" }
+RIGHT_BRACKET = { "]"}
+LEFT_BRACE = { "{" }
+RIGHT_BRACE = { "}" }
+COMMA = { "," }
