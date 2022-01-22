@@ -1,6 +1,6 @@
-program = { SOI ~ NEWLINE* ~ statement_sequence ~ NEWLINE* ~ EOI}
+program = { SOI ~ NL* ~ statement_sequence ~ NL* ~ EOI}
 expression = _{ block | variable | string | character | number | identifiable_operator }
-terminator = { SEMICOLON | NEWLINE}
+terminator = _{ SEMICOLON | NL}
 number = { exponential | float | integer }
 
 integer = @{ "-"? ~ (( "0x" ~ ASCII_HEX_DIGIT+) | ( "0o" ~ ASCII_OCT_DIGIT+) | ( "0b" ~ ASCII_BIN_DIGIT+) | ASCII_DIGIT+) }
@@ -13,12 +13,13 @@ reserved = { BEGIN | BREAK | CATCH | CONST | CONTINUE | DO | ELSE | ELSEIF | END
 variable = @{ !reserved ~ (ASCII_ALPHA | "_" | VAR_UNI) ~ (ASCII_ALPHANUMERIC | "_" | "!" | VAR_UNI)* }
 identifiable_operator = { IDENTIFIABLE_ASSIGNMENT | PAIR | COMPARISON | PIPE | COLON | PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
 
-block = { block_generic }
-statement_sequence = { expression ~ (terminator ~ NEWLINE* ~ expression)* ~ terminator? ~ NEWLINE* }
-block_generic = { BEGIN ~ NEWLINE* ~ statement_sequence ~ NEWLINE* ~ END }
+block = _{ block_generic }
+statement_sequence = { expression ~ (terminator ~ NL* ~ expression)* ~ terminator? ~ NL* }
+block_generic = { BEGIN ~ NL* ~ statement_sequence ~ NL* ~ END }
 
 // -- Literals -- //
-WHITESPACE = _{ " " | "\t" }
+WHITESPACE = @{ (" " | "\t")+ }
+NL = { "\r"? ~ "\n" }
 COMMENT = { "#=" ~ (!"=#" ~ ANY)* ~ "=#" }
 SEMICOLON = { ";" }
 BAREMODULE = { "baremodule" }

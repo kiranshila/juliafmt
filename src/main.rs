@@ -3,7 +3,7 @@ extern crate toml;
 
 use clap::Parser;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::{fs, io, path};
 
 #[derive(Parser, Debug)]
@@ -29,10 +29,7 @@ fn main() -> Result<(), i8> {
         io::stdin().read_to_end(&mut buffer).unwrap();
         let in_str = String::from_utf8(buffer).unwrap();
         // Format code and print to stdout
-        println!(
-            "{}",
-            juliafmt::format(&in_str, &config).unwrap_or_else(|e| panic!("{}", e))
-        );
+        juliafmt::format(&in_str, &config, &mut io::stdout()).unwrap_or_else(|e| panic!("{}", e))
     } else {
         // If we have multiple files and inplace is false, panic
         if args.files.len() > 1 && !args.inplace {
@@ -43,12 +40,11 @@ fn main() -> Result<(), i8> {
             let mut f = File::open(file).unwrap();
             let mut contents = String::new();
             f.read_to_string(&mut contents).unwrap();
-            let formatted =
-                juliafmt::format(&contents, &config).unwrap_or_else(|e| panic!("{}", e));
             if args.inplace {
-                f.write_all(formatted.as_bytes()).unwrap();
+                juliafmt::format(&contents, &config, &mut f).unwrap_or_else(|e| panic!("{}", e))
             } else {
-                println!("{}", formatted);
+                juliafmt::format(&contents, &config, &mut io::stdout())
+                    .unwrap_or_else(|e| panic!("{}", e))
             }
         }
     }
