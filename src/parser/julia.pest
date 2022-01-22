@@ -1,6 +1,5 @@
 program = { SOI ~ NEWLINE* ~ statement_sequence ~ NEWLINE* ~ EOI}
-statement = { expression ~ terminator }
-expression = { block | variable | string | character | number | identifiable_operator }
+expression = _{ block | variable | string | character | number | identifiable_operator }
 terminator = { SEMICOLON | NEWLINE}
 number = { exponential | float | integer }
 
