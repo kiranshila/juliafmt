@@ -51,8 +51,13 @@ impl Format for Pair<'_, Rule> {
         let indentation = indent(config, context);
         match self.as_rule() {
             Rule::variable => output.push_str(self.as_str()),
-            Rule::expression => todo!(),
-            Rule::block => todo!(),
+            Rule::statement_sequence => {
+                let children: Vec<Pair<Rule>> = self.clone().into_inner().collect();
+                for pair in children {
+                    output.push_str(&format!("{}{}", indentation, pair.format(config, context)));
+                }
+            }
+            Rule::terminator => output.push_str(";"),
             _ => (),
         };
         output
@@ -63,7 +68,6 @@ impl Format for Pair<'_, Rule> {
 pub fn format(input: &str, config: &Config) -> Result<String, pest::error::Error<Rule>> {
     // The only thing in Rule::inner will be the program, so pull that out
     let ast = JuliaParser::parse(Rule::program, input)?.peek().unwrap();
-    println!("{:#?}", ast);
     let mut output = String::new();
     // Create the program starting context
     let context = Context { indent_depth: 0 };
