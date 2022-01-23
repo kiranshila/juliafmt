@@ -14,12 +14,14 @@ variable = @{ !reserved ~ (ASCII_ALPHA | "_" | VAR_UNI) ~ (ASCII_ALPHANUMERIC | 
 identifiable_operator = { IDENTIFIABLE_ASSIGNMENT | PAIR | COMPARISON | PIPE | COLON | PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
 
 block = _{ block_generic }
-statement_sequence = { expression ~ (terminator ~ NL* ~ expression)* ~ terminator? ~ NL* }
-block_generic = { BEGIN ~ NL* ~ statement_sequence ~ NL* ~ END }
+statement = { expression ~ terminator+ }
+statement_sequence = { statement+ }
+block_body = { statement_sequence? ~ expression? }
+block_generic = { BEGIN ~ NL* ~ block_body ~ NL* ~ END}
 
 // -- Literals -- //
-WHITESPACE = @{ (" " | "\t")+ }
-NL = { "\r"? ~ "\n" }
+WHITESPACE = _{ (" " | "\t")+ }
+NL = _{ "\r"? ~ "\n" }
 COMMENT = { "#=" ~ (!"=#" ~ ANY)* ~ "=#" }
 SEMICOLON = { ";" }
 BAREMODULE = { "baremodule" }

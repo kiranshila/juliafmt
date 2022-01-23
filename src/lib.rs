@@ -5,6 +5,7 @@ extern crate serde;
 
 use pest::iterators::Pair;
 use pest::Parser;
+use pretty::{Arena, DocAllocator, DocBuilder};
 use serde::Deserialize;
 use std::io::Write;
 
@@ -22,96 +23,58 @@ pub struct Config {
 
 #[derive(Deserialize, Debug)]
 pub struct IndentStyle {
-    indent_width: u16,
-    newline: String,
+    indent_width: usize,
+    column_width: usize,
 }
 
 impl Default for IndentStyle {
     fn default() -> Self {
         IndentStyle {
             indent_width: 4,
-            newline: "\n".to_owned(),
+            column_width: 80,
         }
     }
 }
 
-#[derive(Debug,Copy,Clone,PartialEq, Eq)]
-enum FormatAction {
-    FreshLine,
-    Whitespace,
-    Content,
-}
+fn to_doc<'a, A: 'a, D: DocAllocator<'a, A>>(
+    pair: Pair<Rule>,
+    allocator: &'a D,
+    config: &Config,
+) -> DocBuilder<'a, D, A>
+where
+    D::Doc: Clone,
+    A: Clone,
+{
+    match pair.as_rule() {
+        Rule::program => allocator.concat(pair.into_inner().map(|x| to_doc(x, allocator, config))),
+        Rule::statement_sequence => allocator.intersperse(
+            pair.into_inner().map(|x| to_doc(x, allocator, config)),
+            allocator.hardline(),
+        ),
+        Rule::block_body => allocator
+            .concat(pair.into_inner().map(|x| to_doc(x, allocator, config)))
+            .indent(config.indent_style.indent_width),
 
-// Formatting Details
-#[derive(Debug, Copy, Clone)]
-struct Context {
-    indent_depth: u16,
-    last_action: FormatAction,
-}
-
-fn indent(config: &Config, context: &Context) -> String {
-    " ".repeat(config.indent_style.indent_width as usize)
-        .repeat(context.indent_depth as usize)
-}
-
-trait Format {
-    fn format<W: Write>(self, config: &Config, context: &mut Context, out: &mut W);
-}
-
-impl Format for Pair<'_, Rule> {
-    fn format<W: Write>(self, config: &Config, context: &mut Context, out: &mut W) {
-        let indentation = indent(config, context);
-        match self.as_rule() {
-            Rule::statement_sequence => {
-                if context.last_action == FormatAction::FreshLine {
-                    write!(out, "{}", indentation).unwrap();
-                    context.last_action = FormatAction::Whitespace;
-                }
-                for pair in self.into_inner() {
-                    pair.format(config, context, out);
-                }
+        Rule::block_generic => allocator
+            .text("begin")
+            .append(allocator.hardline())
+            .append(
+                allocator
+                    .concat(pair.into_inner().map(|x| to_doc(x, allocator, config)))
+                    .group(),
+            )
+            .append(allocator.hardline())
+            .append("end"),
+        Rule::statement => {
+            let mut contents = pair.into_inner();
+            let expr_doc = to_doc(contents.next().unwrap(), allocator, config);
+            if contents.any(|x| x.as_rule() == Rule::SEMICOLON) {
+                expr_doc.append(";")
+            } else {
+                expr_doc
             }
-            Rule::block_generic => {
-                context.indent_depth += 1;
-                write!(out, "begin").unwrap();
-                context.last_action = FormatAction::Content;
-                for pair in self.into_inner() {
-                    pair.format(config, context, out);
-                }
-                context.indent_depth -= 1;
-                if context.last_action == FormatAction::FreshLine {
-                    write!(out, "{}", indentation).unwrap();
-                    context.last_action = FormatAction::Whitespace;
-                }
-                write!(out, "end").unwrap();
-                context.last_action = FormatAction::Content;
-            }
-            Rule::program => {
-                for pair in self.into_inner() {
-                    pair.format(config, context, out);
-                }
-            }
-            Rule::SEMICOLON => {
-                write!(out,";{}",config.indent_style.newline).unwrap();
-                context.last_action = FormatAction::FreshLine;
-            }
-            Rule::NL => {
-                if context.last_action != FormatAction::FreshLine {
-                    write!(out,"{}",config.indent_style.newline).unwrap();
-                    context.last_action = FormatAction::FreshLine;
-                }
-            }
-            Rule::WHITESPACE => {
-                if context.last_action == FormatAction::Content {
-                    write!(out," ").unwrap();
-                    context.last_action = FormatAction::Whitespace;
-                }
-            }
-            _ => {
-                write!(out, "{}", self.as_str()).unwrap();
-                context.last_action = FormatAction::Content;
-            }
-        };
+        }
+        _ => allocator.text(pair.as_str().to_owned()),
     }
 }
 
@@ -123,14 +86,11 @@ pub fn format<W: Write>(
 ) -> Result<(), pest::error::Error<Rule>> {
     // The only thing in Rule::inner will be the program, so pull that out
     let ast = JuliaParser::parse(Rule::program, input).unwrap();
-    // Create the program starting context
-    let mut context = Context {
-        indent_depth: 0,
-        last_action: FormatAction::FreshLine,
-    };
-    // Format each top level pair
+    let allocator = Arena::<()>::new();
     for pair in ast {
-        pair.format(config, &mut context, out);
+        to_doc(pair, &allocator, config)
+            .render(config.indent_style.column_width, out)
+            .unwrap();
     }
     Ok(())
 }

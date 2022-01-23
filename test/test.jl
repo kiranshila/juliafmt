@@ -1,8 +1,6 @@
-begin foo
-    asd
-    123
-    1e8;
-    begin
-        bar
-            end
-                    end
+begin
+	begin
+	    begin
+	        AH! end; foo;
+    bar
+    baz; end end
