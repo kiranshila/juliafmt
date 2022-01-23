@@ -1,6 +1,7 @@
 program = { SOI ~ NL* ~ statement_sequence ~ NL* ~ EOI}
-expression = _{ block | variable | string | character | number | identifiable_operator }
-terminator = _{ SEMICOLON | NL}
+atomic_expression = _{ variable | string | character | number | identifiable_operator | parenthetical }
+expression = _{ block | property | atomic_expression }
+terminator = _{ (SEMICOLON | NL)+ | &EOI}
 number = { exponential | float | integer }
 
 integer = @{ "-"? ~ (( "0x" ~ ASCII_HEX_DIGIT+) | ( "0o" ~ ASCII_OCT_DIGIT+) | ( "0b" ~ ASCII_BIN_DIGIT+) | ASCII_DIGIT+) }
@@ -14,10 +15,14 @@ variable = @{ !reserved ~ (ASCII_ALPHA | "_" | VAR_UNI) ~ (ASCII_ALPHANUMERIC | 
 identifiable_operator = { IDENTIFIABLE_ASSIGNMENT | PAIR | COMPARISON | PIPE | COLON | PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
 
 block = _{ block_generic }
-statement = { expression ~ terminator+ }
+statement = { expression ~ terminator }
 statement_sequence = { statement+ }
 block_body = { statement_sequence? ~ expression? }
 block_generic = { BEGIN ~ NL* ~ block_body ~ NL* ~ END}
+
+parenthetical = { LEFT_PAREN ~ expression ~ RIGHT_PAREN }
+property = { atomic_expression ~ (DOT ~ atomic_expression)+ }
+
 
 // -- Literals -- //
 WHITESPACE = _{ (" " | "\t")+ }
