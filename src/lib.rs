@@ -52,9 +52,11 @@ where
             allocator.hardline(),
         ),
         Rule::block_body => allocator
-            .concat(pair.into_inner().map(|x| to_doc(x, allocator, config)))
+            .intersperse(
+                pair.into_inner().map(|x| to_doc(x, allocator, config)),
+                allocator.hardline(),
+            )
             .indent(config.indent_style.indent_width),
-
         Rule::block_generic => allocator
             .text("begin")
             .append(allocator.hardline())
