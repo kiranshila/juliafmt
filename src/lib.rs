@@ -5,7 +5,7 @@ extern crate serde;
 
 use pest::iterators::Pair;
 use pest::Parser;
-use pretty::{Arena, DocAllocator, DocBuilder};
+use pretty::{Arena, BoxAllocator, DocAllocator, DocBuilder};
 use serde::Deserialize;
 use std::io::Write;
 
@@ -31,7 +31,7 @@ impl Default for IndentStyle {
     fn default() -> Self {
         IndentStyle {
             indent_width: 4,
-            column_width: 80,
+            column_width: 92,
         }
     }
 }
@@ -46,27 +46,27 @@ where
     A: Clone,
 {
     match pair.as_rule() {
-        Rule::program => allocator.concat(pair.into_inner().map(|x| to_doc(x, allocator, config))),
-        Rule::statement_sequence => allocator.intersperse(
-            pair.into_inner().map(|x| to_doc(x, allocator, config)),
-            allocator.hardline(),
-        ),
-        Rule::block_body => allocator
+        Rule::statement_sequence => allocator
             .intersperse(
                 pair.into_inner().map(|x| to_doc(x, allocator, config)),
                 allocator.hardline(),
             )
-            .indent(config.indent_style.indent_width),
+            .align(),
+        Rule::block_body => allocator.intersperse(
+            pair.into_inner().map(|x| to_doc(x, allocator, config)),
+            allocator.hardline(),
+        ),
         Rule::block_generic => allocator
             .text("begin")
             .append(allocator.hardline())
             .append(
                 allocator
                     .concat(pair.into_inner().map(|x| to_doc(x, allocator, config)))
-                    .group(),
+                    .indent(config.indent_style.indent_width),
             )
             .append(allocator.hardline())
-            .append("end"),
+            .append("end")
+            .align(),
         Rule::statement => {
             let mut contents = pair.into_inner();
             let expr_doc = to_doc(contents.next().unwrap(), allocator, config);
@@ -76,7 +76,31 @@ where
                 expr_doc
             }
         }
-        _ => allocator.text(pair.as_str().to_owned()),
+        Rule::parenthetical => allocator
+            .concat(pair.into_inner().map(|x| to_doc(x, allocator, config)))
+            .align()
+            .parens(),
+        Rule::property => {
+            let mut contents = pair.into_inner();
+            let expr_doc = to_doc(contents.next().unwrap(), allocator, config).append(
+                allocator
+                    .intersperse(
+                        contents.map(|x| to_doc(x, allocator, config)),
+                        allocator.line_(),
+                    )
+                    .align(),
+            );
+            expr_doc.clone().parens().flat_alt(expr_doc).group()
+        }
+        _ => {
+            let pair_cpy = pair.clone();
+            let contents = pair.into_inner();
+            if contents.peek().is_some() {
+                allocator.concat(contents.map(|x| to_doc(x, allocator, config)))
+            } else {
+                allocator.text(pair_cpy.as_str().to_owned())
+            }
+        }
     }
 }
 
@@ -89,10 +113,17 @@ pub fn format<W: Write>(
     // The only thing in Rule::inner will be the program, so pull that out
     let ast = JuliaParser::parse(Rule::program, input).unwrap();
     let allocator = Arena::<()>::new();
+    //let allocator = BoxAllocator;
     for pair in ast {
         to_doc(pair, &allocator, config)
             .render(config.indent_style.column_width, out)
             .unwrap();
     }
+    Ok(())
+}
+
+pub fn ast<W: Write>(input: &str) -> Result<(), pest::error::Error<Rule>> {
+    let ast = JuliaParser::parse(Rule::program, input).unwrap();
+    println!("{:#?}", ast);
     Ok(())
 }

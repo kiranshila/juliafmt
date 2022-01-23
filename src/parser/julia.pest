@@ -1,6 +1,7 @@
 program = { SOI ~ NL* ~ statement_sequence ~ NL* ~ EOI}
 atomic_expression = _{ variable | string | character | number | identifiable_operator | parenthetical }
-expression = _{ block | property | atomic_expression }
+non_infix = _{block | property | atomic_expression }
+expression = _{ infix  | non_infix}
 terminator = _{ (SEMICOLON | NL)+ | &EOI}
 number = { exponential | float | integer }
 
@@ -13,16 +14,18 @@ reserved = { BEGIN | BREAK | CATCH | CONST | CONTINUE | DO | ELSE | ELSEIF | END
              GLOBAL | IF | IMPORT | LET | LOCAL | MACRO | MODULE | QUOTE | RETURN | STRUCT | TRUE | TRY | USING | WHILE}
 variable = @{ !reserved ~ (ASCII_ALPHA | "_" | VAR_UNI) ~ (ASCII_ALPHANUMERIC | "_" | "!" | VAR_UNI)* }
 identifiable_operator = { IDENTIFIABLE_ASSIGNMENT | PAIR | COMPARISON | PIPE | COLON | PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
-
 block = _{ block_generic }
 statement = { expression ~ terminator }
 statement_sequence = { statement+ }
 block_body = { statement_sequence? ~ expression? }
 block_generic = { BEGIN ~ NL* ~ block_body ~ NL* ~ END}
+parenthetical = { LEFT_PAREN ~ block_body ~ RIGHT_PAREN }
+dotted_atomic = { DOT ~ atomic_expression}
+property = { atomic_expression ~ dotted_atomic+ }
+infix_operator = { ASSIGNMENT | PAIR | CONDITIONAL | ARROW | LAZY_OR | LAZY_AND | COMPARISON | PIPE | COLON |
+                   PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
 
-parenthetical = { LEFT_PAREN ~ expression ~ RIGHT_PAREN }
-property = { atomic_expression ~ (DOT ~ atomic_expression)+ }
-
+infix = {non_infix ~ (infix_operator ~ NL* ~ non_infix)+ }
 
 // -- Literals -- //
 WHITESPACE = _{ (" " | "\t")+ }
@@ -120,9 +123,10 @@ TRANS = { ".\'" }
 CTRANS = { "\'" }
 VARARG = { "..." }
 AT = { "@" }
+
 // --- Syntax --- //
-LEFT_PAREN = { "(" }
-RIGHT_PAREN = { ")" }
+LEFT_PAREN = _{ "(" }
+RIGHT_PAREN = _{ ")" }
 LEFT_BRACKET = { "[" }
 RIGHT_BRACKET = { "]"}
 LEFT_BRACE = { "{" }

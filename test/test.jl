@@ -1,3 +1,11 @@
-foo.(begin
-    foo
-end).foo
+1+
+
+
+
+
+
+
+
+
+
+    1

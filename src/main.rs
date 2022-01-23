@@ -14,6 +14,8 @@ struct Args {
     config: path::PathBuf,
     #[clap(short, long)]
     inplace: bool,
+    #[clap(short, long)]
+    ast: bool,
 }
 
 fn main() -> Result<(), i8> {
