@@ -108,6 +108,12 @@ where
                 .append(allocator.space())
                 .append(rhs_doc.align().group())
         }
+        Rule::funcall => {
+            let mut contents = pair.into_inner();
+            let function = to_doc(contents.next().unwrap(), allocator, config);
+            let expression = to_doc(contents.next().unwrap(), allocator, config);
+            function.append(expression.align().parens())
+        }
         rule => {
             let pair_cpy = pair.clone();
             let contents = pair.into_inner();
@@ -115,8 +121,8 @@ where
                 let sub = |x| intersperse_pairs(contents, allocator, config, x);
                 match rule {
                     Rule::statement_sequence | Rule::block_body => sub(allocator.hardline()),
-                    Rule::infix_lhs => sub(allocator.space()),
-                    Rule::infix => sub(allocator.line()).group(),
+                    Rule::infix_lhs | Rule::ret => sub(allocator.space()),
+                    Rule::infix | Rule::tuple => sub(allocator.line()).group(),
                     Rule::parenthetical => sub(allocator.nil()).align().parens(),
                     _ => sub(allocator.nil()),
                 }

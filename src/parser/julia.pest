@@ -1,10 +1,11 @@
 program = { SOI ~ NL* ~ statement_sequence ~ NL* ~ EOI}
 atomic_expression = _{ variable | string | character | number | identifiable_operator | parenthetical }
-non_infix = _{block | property | atomic_expression }
-expression = _{ assignment | infix  | non_infix}
+typeable = { block | property | atomic_expression }
+non_infix = _{ ret | typed | typeable }
+non_tuple = _{ funcall | unary | infix | non_infix}
+expression = _{ assignment | tuple | non_tuple }
 terminator = _{ (SEMICOLON | NL)+ | &EOI}
 number = { exponential | float | integer }
-
 integer = @{ "-"? ~ (( "0x" ~ ASCII_HEX_DIGIT+) | ( "0o" ~ ASCII_OCT_DIGIT+) | ( "0b" ~ ASCII_BIN_DIGIT+) | ASCII_DIGIT+) }
 float = @{ "-"? ~ ((ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*) | (ASCII_DIGIT* ~ "." ~ ASCII_DIGIT+))}
 exponential = @{ (float | integer) ~ ("e" | "f") ~ integer }
@@ -24,11 +25,17 @@ dotted_atomic = { DOT ~ atomic_expression}
 property = { atomic_expression ~ dotted_atomic+ }
 infix_operator = { PAIR | CONDITIONAL | ARROW | LAZY_OR | LAZY_AND | COMPARISON | PIPE | COLON |
                    PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
-// TODO Fix tuple
-assignable = _{ variable | identifiable_operator }
+unary_operator = { UNARY_PLUS | UNARY_TIMES | NOT | RADICAL | UNARY_COMPARISON | "¬" }
+assignable = _{ (LEFT_PAREN ~ tuple ~ RIGHT_PAREN) | tuple | variable | identifiable_operator }
 assignment = { assignable ~ ASSIGNMENT ~ NL* ~ expression }
-infix_lhs = { (non_infix ~ infix_operator ~ NL*) }
+infix_lhs = { non_infix ~ infix_operator ~ NL* }
 infix = { infix_lhs+ ~ non_infix }
+tuple_lhs = { non_tuple ~ COMMA ~ NL* }
+tuple = { tuple_lhs+ ~ non_tuple?}
+unary = { unary_operator ~ expression }
+ret = { RETURN ~ NL* ~ expression }
+typed = { typeable ~ DECL ~ variable }
+funcall = { atomic_expression ~ LEFT_PAREN ~ NL* ~ expression ~ NL* ~ RIGHT_PAREN }
 
 // -- Literals -- //
 WHITESPACE = _{ (" " | "\t")+ }
@@ -84,6 +91,7 @@ ARROW = { DOT? ~ "←" | "→" | "↔" | "↚" | "↛" | "↞" | "↠" | "↢" |
                 "↶" | "↺" | "↻" | "-->" | "<--" | "<-->" }
 LAZY_OR = { DOT? ~ "||" }
 LAZY_AND = { DOT? ~ "&&" }
+NOT = { DOT? ~ "!" }
 BROADCASTABLE_COMPARISON = { ">" | "<" | ">=" | "≥" | "<=" | "≤" | "==" | "===" | "≡" | "!=" | "≠" | "!==" | "≢" | "∈" |
                              "∉" | "∋" | "∌" | "⊆" | "⊈" | "⊂" | "⊄" | "⊊" | "∝" | "∊" | "∍" | "∥" | "∦" | "∷" | "∺" | "∻" |
                              "∽" | "∾" | "≁" | "≃" | "≂" | "≄" | "≅" | "≆" | "≇" | "≈" | "≉" | "≊" | "≋" | "≌" | "≍" | "≎" |
@@ -103,19 +111,24 @@ BROADCASTABLE_COMPARISON = { ">" | "<" | ">=" | "≥" | "<=" | "≤" | "==" | "=
                              "⫅" | "⫆" | "⫇" | "⫈" | "⫉" | "⫊" | "⫋" | "⫌" | "⫍" | "⫎" | "⫏" | "⫐" | "⫑" | "⫒" | "⫓" | "⫔" |
                              "⫕" | "⫖" | "⫗" | "⫘" | "⫙" | "⫷" | "⫸" | "⫹" | "⫺" | "⊢" | "⊣" | "⟂" | "⫪" | "⫫" | "<:" | ">:" }
 COMPARISON = { (DOT? ~ BROADCASTABLE_COMPARISON) | "in" | "isa" }
+UNARY_COMPARISON = { DOT? ~ "~"}
+
 PIPE = { DOT? ~ ( "<|" | "|>" ) }
 BROADCASTABLE_COLON = { "…" | "⁝" | "⋮" | "⋱" | "⋰" | "⋯" }
 COLON = { (DOT? ~ BROADCASTABLE_COLON) | ":" | ".." }
-BROADCASTABLE_PLUS = { "+" | "-" | "−" | "¦" | "\\" | "⊕" | "⊖" | "⊞" | "⊟" | "++" | "∪" | "∨" | "⊔" | "±" | "∓" | "∔" | "∸" |
+BROADCASTABLE_PLUS = { "−" | "¦" | "\\" | "⊕" | "⊖" | "⊞" | "⊟" | "++" | "∪" | "∨" | "⊔" | "∔" | "∸" |
                        "≏" | "⊎" | "⊻" | "⊽" | "⋎" | "⋓" | "⧺" | "⧻" | "⨈" | "⨢" | "⨣" | "⨤" | "⨥" | "⨦" | "⨧" | "⨨" | "⨩" |
                        "⨪" | "⨫" | "⨬" | "⨭" | "⨮" | "⨹" | "⨺" | "⩁" | "⩂" | "⩅" | "⩊" | "⩌" | "⩏" | "⩐" | "⩒" | "⩔" | "⩖" |
                        "⩗" | "⩛" | "⩝" | "⩡" | "⩢" | "⩣" }
-PLUS = { (DOT? ~ BROADCASTABLE_PLUS) | "$" }
+UNARY_BROADCASTABLE_PLUS = { "+" | "-" | "±" | "∓"}
+PLUS = { (DOT? ~ (BROADCASTABLE_PLUS | UNARY_BROADCASTABLE_PLUS)) | "$" }
+UNARY_PLUS = { (DOT? ~ UNARY_BROADCASTABLE_PLUS) | "$" }
 TIMES = { DOT? ~ ("*" | "/" | "⌿" | "÷" | "%" | "&" | "·" | "·" | "⋅" | "∘" | "×" | "\\\\" | "∩" | "∧" | "⊗" | "⊘" | "⊙" | "⊚" |
                   "⊛" | "⊠" | "⊡" | "⊓" | "∗" | "∙" | "∤" | "⅋" | "≀" | "⊼" | "⋄" | "⋆" | "⋇" | "⋉" | "⋊" | "⋋" | "⋌" | "⋏" | "⋒" |
                   "⟑" | "⦸" | "⦼" | "⦾" | "⦿" | "⧶" | "⧷" | "⨇" | "⨰" | "⨱" | "⨲" | "⨳" | "⨴" | "⨵" | "⨶" | "⨷" | "⨸" | "⨻" | "⨼" |
                   "⨽" | "⩀" | "⩃" | "⩄" | "⩋" | "⩍" | "⩎" | "⩑" | "⩓" | "⩕" | "⩘" | "⩚" | "⩜" | "⩞" | "⩟" | "⩠" | "⫛" | "⊍" | "▷" |
                   "⨝" | "⟕" | "⟖" | "⟗" | "⨟") }
+UNARY_TIMES = { DOT? ~ "*"}
 RATIONAL = { DOT? ~ "//" }
 BITSHIFT = { DOT? ~ ("<<" | ">>" | ">>>")}
 POWER = { DOT? ~ ("^" | "↑" | "↓" | "⇵" | "⟰" | "⟱" | "⤈" | "⤉" | "⤊" | "⤋" | "⤒" | "⤓" | "⥉" | "⥌" | "⥍" | "⥏" | "⥑" | "⥔" | "⥕" |
@@ -126,6 +139,9 @@ TRANS = { ".\'" }
 CTRANS = { "\'" }
 VARARG = { "..." }
 AT = { "@" }
+SUBTYPE = { "<:" }
+SUPERTYPE = { ">:" }
+RADICAL = { DOT? ~ ("√" | "∛" | "∜")}
 
 // --- Syntax --- //
 LEFT_PAREN = _{ "(" }
