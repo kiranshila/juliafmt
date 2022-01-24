@@ -1,6 +1,6 @@
 program = { SOI ~ NL* ~ statement_sequence ~ NL* ~ EOI}
 atomic_expression = _{ variable | string | character | number | identifiable_operator | parenthetical }
-typeable = { block | property | atomic_expression }
+typeable = { block | funcall | property | atomic_expression }
 non_infix = _{ ret | typed | typeable }
 non_tuple = _{ funcall | unary | infix | non_infix}
 expression = _{ range | assignment | tuple | non_tuple }

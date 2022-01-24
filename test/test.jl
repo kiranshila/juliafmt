@@ -1,1 +1,1 @@
-a:b(x::Int64):(x+4^3)
+x = begin a:x:(x+4^f(x)) end

@@ -151,8 +151,8 @@ pub fn format<W: Write>(
     Ok(())
 }
 
-pub fn ast<W: Write>(input: &str) -> Result<(), pest::error::Error<Rule>> {
+pub fn ast<W: Write>(input: &str, out: &mut W) -> Result<(), pest::error::Error<Rule>> {
     let ast = JuliaParser::parse(Rule::program, input).unwrap();
-    println!("{:#?}", ast);
+    write!(out, "{:#?}", ast).unwrap();
     Ok(())
 }
