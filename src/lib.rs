@@ -3,9 +3,9 @@ extern crate pest;
 extern crate pest_derive;
 extern crate serde;
 
-use pest::iterators::Pair;
+use pest::iterators::{Pair, Pairs};
 use pest::Parser;
-use pretty::{Arena, BoxAllocator, DocAllocator, DocBuilder};
+use pretty::{Arena, DocAllocator, DocBuilder};
 use serde::Deserialize;
 use std::io::Write;
 
@@ -36,6 +36,32 @@ impl Default for IndentStyle {
     }
 }
 
+fn intersperse_pairs<'a, A: 'a, D: DocAllocator<'a, A>>(
+    pairs: Pairs<Rule>,
+    allocator: &'a D,
+    config: &Config,
+    separator: DocBuilder<'a, D, A>,
+) -> DocBuilder<'a, D, A>
+where
+    D::Doc: Clone,
+    A: Clone,
+{
+    allocator.intersperse(pairs.map(|x| to_doc(x, allocator, config)), separator)
+}
+
+fn intersperse_children<'a, A: 'a, D: DocAllocator<'a, A>>(
+    pair: Pair<Rule>,
+    allocator: &'a D,
+    config: &Config,
+    separator: DocBuilder<'a, D, A>,
+) -> DocBuilder<'a, D, A>
+where
+    D::Doc: Clone,
+    A: Clone,
+{
+    intersperse_pairs(pair.into_inner(), allocator, config, separator)
+}
+
 fn to_doc<'a, A: 'a, D: DocAllocator<'a, A>>(
     pair: Pair<Rule>,
     allocator: &'a D,
@@ -46,22 +72,11 @@ where
     A: Clone,
 {
     match pair.as_rule() {
-        Rule::statement_sequence => allocator
-            .intersperse(
-                pair.into_inner().map(|x| to_doc(x, allocator, config)),
-                allocator.hardline(),
-            )
-            .align(),
-        Rule::block_body => allocator.intersperse(
-            pair.into_inner().map(|x| to_doc(x, allocator, config)),
-            allocator.hardline(),
-        ),
         Rule::block_generic => allocator
             .text("begin")
             .append(allocator.hardline())
             .append(
-                allocator
-                    .concat(pair.into_inner().map(|x| to_doc(x, allocator, config)))
+                intersperse_children(pair, allocator, config, allocator.nil())
                     .indent(config.indent_style.indent_width),
             )
             .append(allocator.hardline())
@@ -76,27 +91,35 @@ where
                 expr_doc
             }
         }
-        Rule::parenthetical => allocator
-            .concat(pair.into_inner().map(|x| to_doc(x, allocator, config)))
-            .align()
-            .parens(),
         Rule::property => {
             let mut contents = pair.into_inner();
-            let expr_doc = to_doc(contents.next().unwrap(), allocator, config).append(
-                allocator
-                    .intersperse(
-                        contents.map(|x| to_doc(x, allocator, config)),
-                        allocator.line_(),
-                    )
-                    .align(),
-            );
+            let expr_doc = to_doc(contents.next().unwrap(), allocator, config)
+                .append(intersperse_pairs(contents, allocator, config, allocator.line_()).align());
             expr_doc.clone().parens().flat_alt(expr_doc).group()
         }
-        _ => {
+        Rule::assignment => {
+            let mut contents = pair.into_inner();
+            let lhs_doc = to_doc(contents.next().unwrap(), allocator, config);
+            let eq_doc = to_doc(contents.next().unwrap(), allocator, config);
+            let rhs_doc = to_doc(contents.next().unwrap(), allocator, config);
+            lhs_doc
+                .append(allocator.space())
+                .append(eq_doc)
+                .append(allocator.space())
+                .append(rhs_doc.align().group())
+        }
+        rule => {
             let pair_cpy = pair.clone();
             let contents = pair.into_inner();
             if contents.peek().is_some() {
-                allocator.concat(contents.map(|x| to_doc(x, allocator, config)))
+                let sub = |x| intersperse_pairs(contents, allocator, config, x);
+                match rule {
+                    Rule::statement_sequence | Rule::block_body => sub(allocator.hardline()),
+                    Rule::infix_lhs => sub(allocator.space()),
+                    Rule::infix => sub(allocator.line()).group(),
+                    Rule::parenthetical => sub(allocator.nil()).align().parens(),
+                    _ => sub(allocator.nil()),
+                }
             } else {
                 allocator.text(pair_cpy.as_str().to_owned())
             }

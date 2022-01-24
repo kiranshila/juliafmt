@@ -1,7 +1,7 @@
 program = { SOI ~ NL* ~ statement_sequence ~ NL* ~ EOI}
 atomic_expression = _{ variable | string | character | number | identifiable_operator | parenthetical }
 non_infix = _{block | property | atomic_expression }
-expression = _{ infix  | non_infix}
+expression = _{ assignment | infix  | non_infix}
 terminator = _{ (SEMICOLON | NL)+ | &EOI}
 number = { exponential | float | integer }
 
@@ -22,10 +22,13 @@ block_generic = { BEGIN ~ NL* ~ block_body ~ NL* ~ END}
 parenthetical = { LEFT_PAREN ~ block_body ~ RIGHT_PAREN }
 dotted_atomic = { DOT ~ atomic_expression}
 property = { atomic_expression ~ dotted_atomic+ }
-infix_operator = { ASSIGNMENT | PAIR | CONDITIONAL | ARROW | LAZY_OR | LAZY_AND | COMPARISON | PIPE | COLON |
+infix_operator = { PAIR | CONDITIONAL | ARROW | LAZY_OR | LAZY_AND | COMPARISON | PIPE | COLON |
                    PLUS | TIMES | RATIONAL | BITSHIFT | POWER }
-
-infix = {non_infix ~ (infix_operator ~ NL* ~ non_infix)+ }
+// TODO Fix tuple
+assignable = _{ variable | identifiable_operator }
+assignment = { assignable ~ ASSIGNMENT ~ NL* ~ expression }
+infix_lhs = { (non_infix ~ infix_operator ~ NL*) }
+infix = { infix_lhs+ ~ non_infix }
 
 // -- Literals -- //
 WHITESPACE = _{ (" " | "\t")+ }
