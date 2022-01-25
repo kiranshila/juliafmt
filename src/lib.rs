@@ -163,19 +163,8 @@ pub enum RawToken {
     // Other Literals
     #[regex(r#"'(\\[\\"'nrbtfav\?]|\\[0-7]+|\\x[0-9a-fA-F]|\\[uU][0-9a-fA-F]+)'"#)]
     EscapedCharacter,
-    // Kill me
-    #[regex(r"'", |lex| {
-        // *any* unicode, could be more than a byte
-        let mut after_chars = lex.remainder().chars();
-        let a = after_chars.next();
-        let b = after_chars.next();
-        if b == Some('\'') {
-            lex.bump(a.unwrap().len_utf8()+1);
-            Some(())
-        } else {
-            None
-        }
-    }, priority = 3)]
+    // Kill me - this is broken when we look at the tick operator
+    #[regex(r"'(.|[\u{FF}-\u{10FFFF}])'")]
     LiteralCharacter,
     #[regex(r#""(?s:[^"\\]|\\.)*""#)]
     String,
@@ -351,13 +340,15 @@ pub fn format<W: Write>(
     Ok(())
 }
 
-pub fn lex_until_error(s: String) -> Result<u64, String> {
+pub fn lex_until_error(s: String) -> (u64, u64) {
     let mut tokens = 0u64;
+    let mut errors = 0u64;
     for (token, span) in RawToken::lexer(&s).spanned() {
         if token == RawToken::Error {
-            return Err(format!("Hit a unknown token: {:?}", &s[span]));
+            errors += 1;
+            //return Err(format!("Hit a unknown token: {:?}", &s[span]));
         }
         tokens += 1;
     }
-    Ok(tokens)
+    (tokens, errors)
 }

@@ -7,7 +7,7 @@ function speed_test(::Type{T}=Tokenize.Tokens.Token) where T <: Tokenize.Tokens.
     tot_tokens = 0
     tot_errors = 0
     basedir = dirname(Base.find_source_file("int.jl"))
-    for dir in (basedir, Sys.STDLIB)
+    for dir in ("/usr/share/julia/",)
         for (root, dirs, files) in walkdir(dir)
             for file in files
                 if endswith(file, ".jl")
