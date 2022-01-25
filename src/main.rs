@@ -85,9 +85,15 @@ fn main() {
         .filter(|e| !e.path().is_dir())
     {
         files += 1;
-        let (t, e) = juliafmt::lex_until_error(fs::read_to_string(entry.path()).unwrap());
-        tokens += t;
-        errors += e;
+        match juliafmt::lex_until_error(fs::read_to_string(entry.path()).unwrap()) {
+            Ok((t, e)) => {
+                tokens += t;
+                errors += e;
+            }
+            Err(s) => {
+                panic!("\n\nError in {:?}\n{}\n\n", entry.path(), s)
+            }
+        }
     }
     println!(
         "Lexed {} files, with a total of {} tokens and {} errors",

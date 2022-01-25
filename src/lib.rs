@@ -4,13 +4,12 @@ extern crate pest_derive;
 extern crate logos;
 extern crate serde;
 
+use logos::{Lexer, Logos};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use pretty::{Arena, DocAllocator, DocBuilder};
 use serde::Deserialize;
 use std::io::Write;
-
-use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
 pub enum RawToken {
@@ -19,7 +18,7 @@ pub enum RawToken {
     #[regex(r"[ \t\u{a0}]+")]
     Whitespace,
     // Numbers
-    #[regex(r"-?[0-9]+")]
+    #[regex(r"[0-9]+")]
     Integer,
     #[regex(r"-?0x[0-9a-fA-F]+")]
     Hex,
@@ -27,9 +26,9 @@ pub enum RawToken {
     Octal,
     #[regex(r"-?0b[01]+")]
     Binary,
-    #[regex(r"[+-]?([0-9]*[.][0-9]+)|([0-9]+[.][0-9]*)")]
+    #[regex(r"([0-9]*[.][0-9]+)|([0-9]+[.][0-9]*)")]
     Float,
-    #[regex(r"[+-]?[0-9]?[.]?[0-9]+[eEfF][0-9]+")]
+    #[regex(r"[0-9]?[.]?[0-9]+[eEfF][0-9]+")]
     Exponential,
     // Symbols
     #[token("(")]
@@ -113,7 +112,7 @@ pub enum RawToken {
     #[token("while")]
     While,
     // Identifiers
-    #[regex(r"[_a-zA-Z\u{FF}-\u{10FFFF}][!_a-zA-Z\u{FF}-\u{10FFFF}0-9]*")]
+    #[regex(r"[a-zA-Z_\u{A1}-\u{10FFFF}][0-9!a-zA-Z_\u{A1}-\u{10FFFF}]*")]
     Identifier,
     // Operators
     #[token(".")]
@@ -161,10 +160,10 @@ pub enum RawToken {
     #[regex(r"√|∛|∜")]
     Radical,
     // Other Literals
-    #[regex(r#"'(\\[\\"'nrbtfav\?]|\\[0-7]+|\\x[0-9a-fA-F]|\\[uU][0-9a-fA-F]+)'"#)]
+    #[regex(r#"'(\\.|\\[0-7]+|\\x[0-9a-fA-F]|\\[uU][0-9a-fA-F]+)'"#)]
     EscapedCharacter,
     // Kill me - this is broken when we look at the tick operator
-    #[regex(r"'(.|[\u{FF}-\u{10FFFF}])'")]
+    #[regex(r"'[\u{21}-\u{10FFFF}]'")]
     LiteralCharacter,
     #[regex(r#""(?s:[^"\\]|\\.)*""#)]
     String,
@@ -182,6 +181,15 @@ pub enum RawToken {
     At,
     #[regex(r#"`(?s:[^`\\]|\\.)*`"#)]
     Cmd,
+    // Cursed edge cases
+    #[token(")'")]
+    RParenTick,
+    #[token("}'")]
+    RBraceTick,
+    #[token("]'")]
+    RBracketTick,
+    #[regex(r"[a-zA-Z_\u{A1}-\u{10FFFF}][0-9!a-zA-Z_\u{A1}-\u{10FFFF}]*'")]
+    IdentifierTick,
     #[token("'")]
     Tick,
 }
@@ -340,15 +348,20 @@ pub fn format<W: Write>(
     Ok(())
 }
 
-pub fn lex_until_error(s: String) -> (u64, u64) {
+pub fn lex_until_error(s: String) -> Result<(u64, u64), String> {
     let mut tokens = 0u64;
     let mut errors = 0u64;
     for (token, span) in RawToken::lexer(&s).spanned() {
         if token == RawToken::Error {
             errors += 1;
-            //return Err(format!("Hit a unknown token: {:?}", &s[span]));
+            let sp = span.clone();
+            return Err(format!(
+                "Hit a unknown token: {:?} at span {:?}",
+                &s[span], sp
+            ));
+            //println!("Unknown token:{:?}", &s[span]);
         }
         tokens += 1;
     }
-    (tokens, errors)
+    Ok((tokens, errors))
 }
