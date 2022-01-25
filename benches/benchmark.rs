@@ -6,7 +6,7 @@ fn bench_parse(c: &mut Criterion) {
     let input = fs::read_to_string("test/test.jl").unwrap();
     let mut output = sink();
     c.bench_function("Parse test file", |b| {
-        b.iter(|| juliafmt::ast(&input, &mut output))
+        b.iter(|| juliafmt::cst(&input, &mut output))
     });
 }
 
@@ -19,5 +19,5 @@ fn bench_format(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_format, bench_parse);
+criterion_group!(benches, bench_lex);
 criterion_main!(benches);
