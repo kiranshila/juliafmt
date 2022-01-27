@@ -1,6 +1,7 @@
+use crate::expr::expr;
 use crate::lexer::{Lexer, RawToken};
 use crate::syntax::{JuliaLanguage, SyntaxNode};
-use rowan::{GreenNode, GreenNodeBuilder, Language};
+use rowan::{Checkpoint, GreenNode, GreenNodeBuilder, Language};
 use std::iter::Peekable;
 
 // The parser will have the same lifetime as the lexer
@@ -26,12 +27,12 @@ impl<'a> Parser<'a> {
 
     // Peek into the token stream and return an Option<RawToken>
     // Peek by itself returns a (&RawToken,&str)
-    fn peek(&mut self) -> Option<RawToken> {
+    pub fn peek(&mut self) -> Option<RawToken> {
         self.lexer.peek().map(|(kind, _)| *kind)
     }
 
     // Adds the lexeme the lexer is currently at to the current branch of the parse three
-    fn bump(&mut self) {
+    pub fn bump(&mut self) {
         let (kind, text) = self.lexer.next().unwrap();
         self.builder.token(JuliaLanguage::kind_to_raw(kind), text);
     }
@@ -39,9 +40,7 @@ impl<'a> Parser<'a> {
     // The parser itself returns an instance of a Parse
     pub fn parse(mut self) -> Parse {
         self.start_node(RawToken::Root);
-        if self.peek() == Some(RawToken::Integer) {
-            self.bump();
-        }
+        expr(&mut self);
         self.finish_node();
         Parse {
             green_node: self.builder.finish(),
@@ -49,11 +48,21 @@ impl<'a> Parser<'a> {
     }
 
     // Some utilities for the start and finish nodes
-    fn start_node(&mut self, kind: RawToken) {
+
+    pub fn start_node_at(&mut self, checkpoint: Checkpoint, kind: RawToken) {
+        self.builder
+            .start_node_at(checkpoint, JuliaLanguage::kind_to_raw(kind));
+    }
+
+    pub fn checkpoint(&self) -> Checkpoint {
+        self.builder.checkpoint()
+    }
+
+    pub fn start_node(&mut self, kind: RawToken) {
         self.builder.start_node(JuliaLanguage::kind_to_raw(kind));
     }
 
-    fn finish_node(&mut self) {
+    pub fn finish_node(&mut self) {
         self.builder.finish_node();
     }
 }

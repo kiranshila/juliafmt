@@ -1,23 +1,24 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use juliafmt::lexer::{Lexer, RawToken};
 use std::fs;
-use std::io::sink;
 use walkdir::WalkDir;
 
-fn bench_parse(c: &mut Criterion) {
-    let input = fs::read_to_string("test/test.jl").unwrap();
-    let mut output = sink();
-    c.bench_function("Parse test file", |b| {
-        b.iter(|| juliafmt::cst(&input, &mut output))
-    });
-}
-
-fn bench_format(c: &mut Criterion) {
-    let input = "begin foo end\n".to_owned();
-    let mut output = sink();
-    let config = juliafmt::Config::default();
-    c.bench_function("simple block", |b| {
-        b.iter(|| juliafmt::format(&input, &config, &mut output))
-    });
+fn lex_until_error(s: String) -> Result<(u64, u64), String> {
+    let mut tokens = 0u64;
+    let mut errors = 0u64;
+    for (token, span) in Lexer::new(&s).inner.spanned() {
+        if token == RawToken::Error {
+            errors += 1;
+            let sp = span.clone();
+            return Err(format!(
+                "Hit a unknown token: {:?} at span {:?}",
+                &s[span], sp
+            ));
+            //println!("Unknown token:{:?}", &s[span]);
+        }
+        tokens += 1;
+    }
+    Ok((tokens, errors))
 }
 
 fn lex_all_julia() {
@@ -28,7 +29,7 @@ fn lex_all_julia() {
         .filter(|e| e.path().extension().unwrap() == "jl")
         .filter(|e| !e.path().is_dir())
     {
-        juliafmt::lex_until_error(fs::read_to_string(entry.path()).unwrap());
+        lex_until_error(fs::read_to_string(entry.path()).unwrap());
     }
 }
 
