@@ -5,16 +5,18 @@ version = "0.1.0"
 
 [dependencies]
 clap = { version = "3.0", features = ["derive","color"]}
-pest = "2.1"
-pest_derive = "2.1"
 toml = "0.5"
 serde = { version = "1.0", features = ["derive"]}
 pretty = "0.11"
 logos = "0.12"
-walkdir = "2.3"
+num-derive = "0.3"
+num-traits = "0.2"
+rowan = "0.15"
 
 [dev-dependencies]
 criterion = "0.3"
+walkdir = "2.3"
+expect-test = "1.2"
 
 [[bench]]
 name = "benchmark"
