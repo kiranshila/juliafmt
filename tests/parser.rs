@@ -1,8 +1,9 @@
 use expect_test::{expect, Expect};
-use juliafmt::parser::Parser;
+use juliafmt::parser::parse;
 
-fn check(input: &str, expected_tree: Expect) {
-    let parse = Parser::new(input).parse();
+#[cfg(test)]
+fn check(input: &str, expected_tree: expect_test::Expect) {
+    let parse = parse(input);
     expected_tree.assert_eq(&parse.debug_tree());
 }
 
