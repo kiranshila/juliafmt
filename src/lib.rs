@@ -1,4 +1,3 @@
-pub mod expr;
 pub mod formatter;
 pub mod lexer;
 pub mod parser;

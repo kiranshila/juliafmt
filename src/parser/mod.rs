@@ -1,14 +1,20 @@
-use crate::expr::expr;
+mod event;
+mod expr;
+mod sink;
+
 use crate::lexer::{Lexer, RawToken};
-use crate::syntax::{JuliaLanguage, SyntaxNode};
-use rowan::{Checkpoint, GreenNode, GreenNodeBuilder, Language};
+use crate::syntax::SyntaxNode;
+use event::Event;
+use expr::expr;
+use rowan::GreenNode;
+use sink::Sink;
 use std::iter::Peekable;
 
 // The parser will have the same lifetime as the lexer
 // We'll wrap the lexer in a peekable iterator so we can look at the next token without consuming it
 pub struct Parser<'a> {
     lexer: Peekable<Lexer<'a>>,
-    builder: GreenNodeBuilder<'static>,
+    events: Vec<Event>,
 }
 
 // Holding the parse result
@@ -21,7 +27,7 @@ impl<'a> Parser<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             lexer: Lexer::new(input).peekable(),
-            builder: GreenNodeBuilder::new(),
+            events: Vec::new(),
         }
     }
 
@@ -31,10 +37,13 @@ impl<'a> Parser<'a> {
         self.lexer.peek().map(|(kind, _)| *kind)
     }
 
-    // Adds the lexeme the lexer is currently at to the current branch of the parse three
+    // Pushes an event that will add the lexeme the lexer is currently at to the current branch of the parse three
     pub fn bump(&mut self) {
         let (kind, text) = self.lexer.next().unwrap();
-        self.builder.token(JuliaLanguage::kind_to_raw(kind), text);
+        self.events.push(Event::AddToken {
+            kind,
+            text: text.into(),
+        });
     }
 
     // The parser itself returns an instance of a Parse
@@ -42,28 +51,29 @@ impl<'a> Parser<'a> {
         self.start_node(RawToken::Root);
         expr(&mut self);
         self.finish_node();
+
+        let sink = Sink::new(self.events);
+
         Parse {
-            green_node: self.builder.finish(),
+            green_node: sink.finish(),
         }
     }
 
     // Some utilities for the start and finish nodes
-
-    pub fn start_node_at(&mut self, checkpoint: Checkpoint, kind: RawToken) {
-        self.builder
-            .start_node_at(checkpoint, JuliaLanguage::kind_to_raw(kind));
+    pub fn start_node_at(&mut self, checkpoint: usize, kind: RawToken) {
+        self.events.push(Event::StartNodeAt { kind, checkpoint });
     }
 
-    pub fn checkpoint(&self) -> Checkpoint {
-        self.builder.checkpoint()
+    pub fn checkpoint(&self) -> usize {
+        self.events.len()
     }
 
     pub fn start_node(&mut self, kind: RawToken) {
-        self.builder.start_node(JuliaLanguage::kind_to_raw(kind));
+        self.events.push(Event::StartNode { kind });
     }
 
     pub fn finish_node(&mut self) {
-        self.builder.finish_node();
+        self.events.push(Event::FinishNode);
     }
 }
 
