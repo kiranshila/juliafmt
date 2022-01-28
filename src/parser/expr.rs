@@ -1,5 +1,5 @@
+use super::Parser;
 use crate::lexer::RawToken;
-use crate::parser::Parser;
 
 // Operator precedence
 enum InfixOp {
@@ -64,11 +64,11 @@ impl PrefixOp {
     }
 }
 
-pub fn expr(p: &mut Parser) {
+pub(super) fn expr(p: &mut Parser) {
     expr_binding_power(p, 0);
 }
 
-pub fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
+fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
     // Create the checkpoint so we can backtrack
     let checkpoint = p.checkpoint();
     // All the things that can be on either side of a binary operator

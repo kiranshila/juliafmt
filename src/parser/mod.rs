@@ -8,12 +8,11 @@ use event::Event;
 use expr::expr;
 use rowan::GreenNode;
 use sink::Sink;
-use std::iter::Peekable;
 
-// The parser will have the same lifetime as the lexer
-// We'll wrap the lexer in a peekable iterator so we can look at the next token without consuming it
-pub struct Parser<'a> {
-    lexer: Peekable<Lexer<'a>>,
+// The parser will have the same lifetime as the lexer vec
+struct Parser<'l, 'input> {
+    lexemes: &'l [(RawToken, &'input str)],
+    cursor: usize,
     events: Vec<Event>,
 }
 
@@ -22,41 +21,38 @@ pub struct Parse {
     green_node: GreenNode,
 }
 
-impl<'a> Parser<'a> {
+impl<'l, 'input> Parser<'l, 'input> {
     // Constructor for the parser
-    pub fn new(input: &'a str) -> Self {
+    fn new(lexemes: &'l [(RawToken, &'input str)]) -> Self {
         Self {
-            lexer: Lexer::new(input).peekable(),
+            lexemes,
+            cursor: 0,
             events: Vec::new(),
         }
     }
 
-    // Peek into the token stream and return an Option<RawToken>
-    // Peek by itself returns a (&RawToken,&str)
+    // Simulate peeking into the token stream by just getting the nth lexeme specified by the current cursor
     pub fn peek(&mut self) -> Option<RawToken> {
-        self.lexer.peek().map(|(kind, _)| *kind)
+        self.lexemes.get(self.cursor).map(|(kind, _)| *kind)
     }
 
-    // Pushes an event that will add the lexeme the lexer is currently at to the current branch of the parse three
-    pub fn bump(&mut self) {
-        let (kind, text) = self.lexer.next().unwrap();
+    // Pushes the current cursored lexeme into the event stream
+    fn bump(&mut self) {
+        let (kind, text) = self.lexemes[self.cursor];
+
+        self.cursor += 1;
         self.events.push(Event::AddToken {
             kind,
             text: text.into(),
         });
     }
 
-    // The parser itself returns an instance of a Parse
-    pub fn parse(mut self) -> Parse {
+    // The parser itself returns the event vector to be processed by the top level function parse
+    pub fn parse(mut self) -> Vec<Event> {
         self.start_node(RawToken::Root);
         expr(&mut self);
         self.finish_node();
-
-        let sink = Sink::new(self.events);
-
-        Parse {
-            green_node: sink.finish(),
-        }
+        self.events
     }
 
     // Some utilities for the start and finish nodes
@@ -84,5 +80,16 @@ impl Parse {
         let formatted = format!("{:#?}", syntax_node);
         // We cut off the last byte because formatting the SyntaxNode adds on a newline at the end.
         formatted[0..formatted.len() - 1].to_string()
+    }
+}
+
+pub fn parse(input: &str) -> Parse {
+    let lexemes: Vec<_> = Lexer::new(input).collect();
+    let parser = Parser::new(&lexemes);
+    let events = parser.parse();
+    let sink = Sink::new(&lexemes, events);
+
+    Parse {
+        green_node: sink.finish(),
     }
 }

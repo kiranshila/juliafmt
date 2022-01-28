@@ -5,7 +5,7 @@ pub mod syntax;
 
 use clap::Parser as CParser;
 use lexer::Lexer;
-use parser::Parser;
+use parser::parse;
 use std::io::{self, Write};
 
 #[derive(CParser, Debug)]
@@ -69,7 +69,7 @@ fn main() -> io::Result<()> {
         stdin.read_line(&mut input)?;
 
         if args.ast {
-            let parse = Parser::new(&input).parse();
+            let parse = parse(&input);
             println!("{}", parse.debug_tree());
         } else {
             let lex: Vec<_> = Lexer::new(&input).inner.spanned().collect();
