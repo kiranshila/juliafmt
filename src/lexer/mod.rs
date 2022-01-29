@@ -78,7 +78,7 @@ pub enum RawToken {
     #[token(";")]
     Semicolon,
     // Comments
-    #[regex(r"#[^\r\n]*(\r\n|\n)?")]
+    #[regex(r"#[^\r\n=]*(\r\n|\n)")]
     InlineComment,
     #[regex(r"#=([^=]|=[^#])*=#")]
     BlockComment,
@@ -224,6 +224,16 @@ pub enum RawToken {
     IdentifierTick,
     #[token("'")]
     Tick,
+}
+
+// Add a method to RawToken to check if it's *trivia*
+impl RawToken {
+    pub(crate) fn is_trivia(self) -> bool {
+        matches!(
+            self,
+            Self::Whitespace | Self::InlineComment | Self::BlockComment
+        )
+    }
 }
 
 // We need to wrap the lexer to make it play nice with rowan

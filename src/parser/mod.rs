@@ -1,6 +1,7 @@
 mod event;
 mod expr;
 mod sink;
+mod source;
 
 use crate::lexer::{Lexeme, Lexer, RawToken};
 use crate::syntax::SyntaxNode;
@@ -8,11 +9,11 @@ use event::Event;
 use expr::expr;
 use rowan::GreenNode;
 use sink::Sink;
+use source::Source;
 
 // The parser will have the same lifetime as the lexer vec
 struct Parser<'l, 'input> {
-    lexemes: &'l [Lexeme<'input>],
-    cursor: usize,
+    source: Source<'l, 'input>,
     events: Vec<Event>,
 }
 
@@ -25,36 +26,23 @@ impl<'l, 'input> Parser<'l, 'input> {
     // Constructor for the parser
     fn new(lexemes: &'l [Lexeme<'input>]) -> Self {
         Self {
-            lexemes,
-            cursor: 0,
+            source: Source::new(lexemes),
             events: Vec::new(),
         }
     }
 
     // Simulate peeking into the token stream by just getting the nth lexeme specified by the current cursor
     pub fn peek(&mut self) -> Option<RawToken> {
-        self.eat_whitespace();
-        self.peek_raw()
+        self.source.peek_kind()
     }
 
     // Pushes the current cursored lexeme into the event stream
     fn bump(&mut self) {
-        self.eat_whitespace();
-
-        let Lexeme { kind, text } = self.lexemes[self.cursor];
-
-        self.cursor += 1;
+        let Lexeme { kind, text } = self.source.next_lexeme().unwrap();
         self.events.push(Event::AddToken {
-            kind,
-            text: text.into(),
+            kind: *kind,
+            text: (*text).into(),
         });
-    }
-
-    // Keep tracking past whitespace
-    fn eat_whitespace(&mut self) {
-        while self.peek_raw() == Some(RawToken::Whitespace) {
-            self.cursor += 1;
-        }
     }
 
     // The parser itself returns the event vector to be processed by the top level function parse
@@ -80,12 +68,6 @@ impl<'l, 'input> Parser<'l, 'input> {
 
     pub fn finish_node(&mut self) {
         self.events.push(Event::FinishNode);
-    }
-
-    fn peek_raw(&self) -> Option<RawToken> {
-        self.lexemes
-            .get(self.cursor)
-            .map(|Lexeme { kind, .. }| *kind)
     }
 }
 
