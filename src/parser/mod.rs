@@ -33,13 +33,14 @@ impl<'l, 'input> Parser<'l, 'input> {
 
     // Simulate peeking into the token stream by just getting the nth lexeme specified by the current cursor
     pub fn peek(&mut self) -> Option<RawToken> {
-        self.lexemes
-            .get(self.cursor)
-            .map(|Lexeme { kind, .. }| *kind)
+        self.eat_whitespace();
+        self.peek_raw()
     }
 
     // Pushes the current cursored lexeme into the event stream
     fn bump(&mut self) {
+        self.eat_whitespace();
+
         let Lexeme { kind, text } = self.lexemes[self.cursor];
 
         self.cursor += 1;
