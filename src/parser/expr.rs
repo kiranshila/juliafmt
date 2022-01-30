@@ -24,7 +24,7 @@ enum InfixOp {
 enum PrefixOp {
     Plus,
     Not,
-    Sqrt,
+    Radical,
 }
 
 // Precedence and associativity from
@@ -59,7 +59,7 @@ impl PrefixOp {
         match self {
             Self::Not => ((), 30),
             Self::Plus => ((), 30),
-            Self::Sqrt => ((), 30),
+            Self::Radical => ((), 30),
         }
     }
 }
@@ -81,11 +81,11 @@ fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
         | Some(RawToken::Float)
         | Some(RawToken::Exponential) => p.bump(),
         // Prefix operators
-        Some(RawToken::Plus) | Some(RawToken::Not) | Some(RawToken::Sqrt) => {
+        Some(RawToken::Plus) | Some(RawToken::Not) | Some(RawToken::Radical) => {
             let op = match p.peek() {
                 Some(RawToken::Plus) => PrefixOp::Plus,
                 Some(RawToken::Not) => PrefixOp::Not,
-                Some(RawToken::Sqrt) => PrefixOp::Sqrt,
+                Some(RawToken::Radical) => PrefixOp::Radical,
                 _ => return, // we’ll handle errors later.
             };
             let ((), right_binding_power) = op.binding_power();
