@@ -15,10 +15,10 @@ use num_derive::{FromPrimitive, ToPrimitive};
 pub enum RawToken {
     // AST NODES, not lexing nodes
     Root,
-    BinaryExpr,
-    UnaryExpr,
     Literal,
-    Parenthetical,
+    InfixExpr,
+    PrefixExpr,
+    ParenExpr,
     // Lexing
     #[error]
     Error,

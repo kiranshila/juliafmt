@@ -40,11 +40,8 @@ impl<'l, 'input> Parser<'l, 'input> {
 
     // Pushes the current cursored lexeme into the event stream
     fn bump(&mut self) {
-        let Lexeme { kind, text } = self.source.next_lexeme().unwrap();
-        self.events.push(Event::AddToken {
-            kind: *kind,
-            text: (*text).into(),
-        });
+        self.source.next_lexeme().unwrap();
+        self.events.push(Event::AddToken);
     }
 
     // The parser itself returns the event vector to be processed by the top level function parse

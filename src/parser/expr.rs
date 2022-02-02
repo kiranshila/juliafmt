@@ -1,9 +1,10 @@
 use super::marker::CompletedMarker;
 use super::Parser;
 use crate::lexer::RawToken;
+use std::convert::TryInto;
 
 // Operator precedence
-enum InfixOp {
+enum BinaryOp {
     Assignment,
     Pair,
     Conditional,
@@ -22,49 +23,87 @@ enum InfixOp {
     Dot,
 }
 
-enum PrefixOp {
+enum UnaryOp {
     Plus,
     Not,
     Radical,
 }
 
-enum PostfixOp {
-    Tick,
-}
-
 // Precedence and associativity from
 // https://docs.julialang.org/en/v1/manual/mathematical-operations/#Operator-Precedence-and-Associativity
-impl InfixOp {
+impl BinaryOp {
     fn binding_power(&self) -> (u8, u8) {
+        use BinaryOp::*;
         match self {
-            Self::Assignment => (2, 1),
-            Self::Pair => (4, 3),
-            Self::Conditional => (6, 5),
-            Self::Or => (8, 7),
-            Self::And => (10, 9),
-            Self::Comparison => (11, 11),
-            Self::PipeL => (16, 15),
-            Self::PipeR => (17, 18),
-            Self::Colon => (19, 20),
-            Self::Plus => (21, 22),
-            Self::Times => (23, 24),
-            Self::Rational => (25, 26),
-            Self::Bitshift => (27, 28),
+            Assignment => (2, 1),
+            Pair => (4, 3),
+            Conditional => (6, 5),
+            Or => (8, 7),
+            And => (10, 9),
+            Comparison => (11, 11),
+            PipeL => (16, 15),
+            PipeR => (17, 18),
+            Colon => (19, 20),
+            Plus => (21, 22),
+            Times => (23, 24),
+            Rational => (25, 26),
+            Bitshift => (27, 28),
             // Infix goes here
-            Self::Power => (100, 101),
-            Self::Decl => (102, 103),
-            Self::Dot => (104, 105),
+            Power => (100, 101),
+            Decl => (102, 103),
+            Dot => (104, 105),
         }
     }
 }
 
 // Prefix operators have higher precedence than infix
-impl PrefixOp {
+impl UnaryOp {
     fn binding_power(&self) -> ((), u8) {
+        use UnaryOp::*;
         match self {
-            Self::Not => ((), 30),
-            Self::Plus => ((), 30),
-            Self::Radical => ((), 30),
+            Not => ((), 30),
+            Plus => ((), 30),
+            Radical => ((), 30),
+        }
+    }
+}
+
+// Raw token to expr tokens
+impl TryFrom<Option<RawToken>> for BinaryOp {
+    type Error = Option<RawToken>;
+    fn try_from(item: Option<RawToken>) -> Result<Self, Self::Error> {
+        use BinaryOp::*;
+        match item {
+            Some(RawToken::Assignment) => Ok(Assignment),
+            Some(RawToken::Pair) => Ok(Pair),
+            Some(RawToken::Conditional) => Ok(Conditional),
+            Some(RawToken::Or) => Ok(Or),
+            Some(RawToken::And) => Ok(And),
+            Some(RawToken::Comparison) => Ok(Comparison),
+            Some(RawToken::PipeL) => Ok(PipeL),
+            Some(RawToken::PipeR) => Ok(PipeR),
+            Some(RawToken::Colon) => Ok(Colon),
+            Some(RawToken::Plus) => Ok(Plus),
+            Some(RawToken::Times) => Ok(Times),
+            Some(RawToken::Rational) => Ok(Rational),
+            Some(RawToken::Bitshift) => Ok(Bitshift),
+            Some(RawToken::Power) => Ok(Power),
+            Some(RawToken::Decl) => Ok(Decl),
+            Some(RawToken::Dot) => Ok(Dot),
+            tok => Err(tok),
+        }
+    }
+}
+
+impl TryFrom<Option<RawToken>> for UnaryOp {
+    type Error = Option<RawToken>;
+    fn try_from(item: Option<RawToken>) -> Result<Self, Self::Error> {
+        use UnaryOp::*;
+        match item {
+            Some(RawToken::Plus) => Ok(Plus),
+            Some(RawToken::Not) => Ok(Not),
+            Some(RawToken::Radical) => Ok(Radical),
+            tok => Err(tok),
         }
     }
 }
@@ -82,24 +121,9 @@ fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
 
     loop {
         // Grab from the precedence table
-        let op = match p.peek() {
-            Some(RawToken::Assignment) => InfixOp::Assignment,
-            Some(RawToken::Pair) => InfixOp::Pair,
-            Some(RawToken::Conditional) => InfixOp::Conditional,
-            Some(RawToken::Or) => InfixOp::Or,
-            Some(RawToken::And) => InfixOp::And,
-            Some(RawToken::Comparison) => InfixOp::Comparison,
-            Some(RawToken::PipeL) => InfixOp::PipeL,
-            Some(RawToken::PipeR) => InfixOp::PipeR,
-            Some(RawToken::Colon) => InfixOp::Colon,
-            Some(RawToken::Plus) => InfixOp::Plus,
-            Some(RawToken::Times) => InfixOp::Times,
-            Some(RawToken::Rational) => InfixOp::Rational,
-            Some(RawToken::Bitshift) => InfixOp::Bitshift,
-            Some(RawToken::Power) => InfixOp::Power,
-            Some(RawToken::Decl) => InfixOp::Decl,
-            Some(RawToken::Dot) => InfixOp::Dot,
-            _ => return, // we’ll handle errors later.
+        let op: BinaryOp = match p.peek().try_into() {
+            Ok(x) => x,
+            Err(_) => return,
         };
 
         // Destructure binding power
@@ -116,54 +140,68 @@ fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
         // Recurse
         let m = lhs.precede(p);
         expr_binding_power(p, right_binding_power);
-        lhs = m.complete(p, RawToken::BinaryExpr);
+        lhs = m.complete(p, RawToken::InfixExpr);
     }
 }
 
 fn lhs(p: &mut Parser) -> Option<CompletedMarker> {
-    // All the things that can be on either side of a binary operator
     let cm = match p.peek() {
-        Some(RawToken::Identifier)
-        | Some(RawToken::Integer)
-        | Some(RawToken::Hex)
-        | Some(RawToken::Octal)
-        | Some(RawToken::Binary)
-        | Some(RawToken::Float)
-        | Some(RawToken::Exponential) => {
-            let m = p.start();
-            p.bump();
-            m.complete(p, RawToken::Literal)
-        }
-        // Prefix operators
-        Some(RawToken::Plus) | Some(RawToken::Not) | Some(RawToken::Radical) => {
-            let op = match p.peek() {
-                Some(RawToken::Plus) => PrefixOp::Plus,
-                Some(RawToken::Not) => PrefixOp::Not,
-                Some(RawToken::Radical) => PrefixOp::Radical,
-                _ => return None, // we’ll handle errors later.
-            };
-            let m = p.start();
-            let ((), right_binding_power) = op.binding_power();
-            // Eat the token
-            p.bump();
-
-            expr_binding_power(p, right_binding_power);
-            m.complete(p, RawToken::UnaryExpr)
-        }
-        // Parentheticals
-        Some(RawToken::LParen) => {
-            let m = p.start();
-            // Consume the LParen
-            p.bump();
-            // A paren "resets" operator precedence, so we can just recur
-            expr_binding_power(p, 0);
-            // Parens must have pairs
-            assert_eq!(p.peek(), Some(RawToken::RParen));
-            // Consume the closing paren
-            p.bump();
-            m.complete(p, RawToken::Parenthetical)
-        }
-        _ => unreachable!(),
+        // Everything that can be a literal
+        Some(RawToken::Identifier) => literal(p),
+        Some(RawToken::Integer) => literal(p),
+        Some(RawToken::Hex) => literal(p),
+        Some(RawToken::Octal) => literal(p),
+        Some(RawToken::Binary) => literal(p),
+        Some(RawToken::Float) => literal(p),
+        Some(RawToken::Exponential) => literal(p),
+        // Prefix Operators
+        Some(RawToken::Plus) => prefix_expr(p),
+        Some(RawToken::Not) => prefix_expr(p),
+        Some(RawToken::Radical) => prefix_expr(p),
+        // Parenthetical
+        Some(RawToken::LParen) => paren_expr(p),
+        _ => return None,
     };
+
     Some(cm)
+}
+
+fn literal(p: &mut Parser) -> CompletedMarker {
+    let m = p.start();
+    p.bump();
+    m.complete(p, RawToken::Literal)
+}
+
+fn prefix_expr(p: &mut Parser) -> CompletedMarker {
+    let m = p.start();
+
+    let op: UnaryOp = match p.peek().try_into() {
+        Ok(x) => x,
+        Err(t) => match t {
+            Some(_) => panic!("Expected a unary operator"),
+            _ => unreachable!(),
+        },
+    };
+
+    let ((), right_binding_power) = op.binding_power();
+    // Eat the token
+    p.bump();
+    // Recur to build tree
+    expr_binding_power(p, right_binding_power);
+
+    m.complete(p, RawToken::PrefixExpr)
+}
+
+fn paren_expr(p: &mut Parser) -> CompletedMarker {
+    assert_eq!(p.peek(), Some(RawToken::LParen));
+
+    let m = p.start();
+    // Eat
+    p.bump();
+    // Recur, resetting binding precedence
+    expr_binding_power(p, 0);
+    assert_eq!(p.peek(), Some(RawToken::RParen));
+    // Consume the closing paren
+    p.bump();
+    m.complete(p, RawToken::ParenExpr)
 }

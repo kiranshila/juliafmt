@@ -7,10 +7,7 @@ pub enum Event {
         kind: RawToken,
         forward_parent: Option<usize>,
     },
-    AddToken {
-        kind: RawToken,
-        text: String,
-    },
+    AddToken,
     FinishNode,
     Placeholder,
 }

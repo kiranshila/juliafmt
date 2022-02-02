@@ -1,5 +1,5 @@
 use super::event::Event;
-use crate::lexer::{Lexeme, RawToken};
+use crate::lexer::Lexeme;
 use crate::syntax::JuliaLanguage;
 use rowan::{GreenNode, GreenNodeBuilder, Language};
 use std::mem;
@@ -56,7 +56,7 @@ impl<'l, 'input> Sink<'l, 'input> {
                         self.builder.start_node(JuliaLanguage::kind_to_raw(kind));
                     }
                 }
-                Event::AddToken { kind, text } => self.token(kind, &text),
+                Event::AddToken => self.token(),
                 Event::FinishNode => self.builder.finish_node(),
                 Event::Placeholder => {}
             }
@@ -65,7 +65,8 @@ impl<'l, 'input> Sink<'l, 'input> {
         self.builder.finish()
     }
 
-    fn token(&mut self, kind: RawToken, text: &str) {
+    fn token(&mut self) {
+        let Lexeme { kind, text } = self.lexemes[self.cursor];
         self.builder.token(JuliaLanguage::kind_to_raw(kind), text);
         self.cursor += 1;
     }
@@ -75,7 +76,7 @@ impl<'l, 'input> Sink<'l, 'input> {
             if !lexeme.kind.is_trivia() {
                 break;
             }
-            self.token(lexeme.kind, lexeme.text);
+            self.token();
         }
     }
 }
