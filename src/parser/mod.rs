@@ -4,7 +4,7 @@ mod marker;
 mod sink;
 mod source;
 
-use crate::lexer::{Lexeme, Lexer, RawToken};
+use crate::lexer::{Lexer, RawToken, Token};
 use crate::syntax::SyntaxNode;
 use event::Event;
 use expr::expr;
@@ -14,8 +14,8 @@ use sink::Sink;
 use source::Source;
 
 // The parser will have the same lifetime as the lexer vec
-struct Parser<'l, 'input> {
-    source: Source<'l, 'input>,
+struct Parser<'t, 'input> {
+    source: Source<'t, 'input>,
     events: Vec<Event>,
 }
 
@@ -24,23 +24,23 @@ pub struct Parse {
     green_node: GreenNode,
 }
 
-impl<'l, 'input> Parser<'l, 'input> {
+impl<'t, 'input> Parser<'t, 'input> {
     // Constructor for the parser
-    fn new(lexemes: &'l [Lexeme<'input>]) -> Self {
+    fn new(tokens: &'t [Token<'input>]) -> Self {
         Self {
-            source: Source::new(lexemes),
+            source: Source::new(tokens),
             events: Vec::new(),
         }
     }
 
-    // Simulate peeking into the token stream by just getting the nth lexeme specified by the current cursor
+    // Simulate peeking into the token stream by just getting the nth token specified by the current cursor
     pub fn peek(&mut self) -> Option<RawToken> {
         self.source.peek_kind()
     }
 
-    // Pushes the current cursored lexeme into the event stream
+    // Pushes the current cursored token into the event stream
     fn bump(&mut self) {
-        self.source.next_lexeme().unwrap();
+        self.source.next_token().unwrap();
         self.events.push(Event::AddToken);
     }
 
@@ -70,10 +70,10 @@ impl Parse {
 }
 
 pub fn parse(input: &str) -> Parse {
-    let lexemes: Vec<_> = Lexer::new(input).collect();
-    let parser = Parser::new(&lexemes);
+    let tokens: Vec<_> = Lexer::new(input).collect();
+    let parser = Parser::new(&tokens);
     let events = parser.parse();
-    let sink = Sink::new(&lexemes, events);
+    let sink = Sink::new(&tokens, events);
 
     Parse {
         green_node: sink.finish(),

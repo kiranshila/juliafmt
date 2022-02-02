@@ -1,23 +1,23 @@
-// Holds the lexemes and the current cursor position
-use crate::lexer::{Lexeme, RawToken};
+// Holds the tokens and the current cursor position
+use crate::lexer::{RawToken, Token};
 
-pub(super) struct Source<'l, 'input> {
-    lexemes: &'l [Lexeme<'input>],
+pub(super) struct Source<'t, 'input> {
+    tokens: &'t [Token<'input>],
     cursor: usize,
 }
 
-impl<'l, 'input> Source<'l, 'input> {
-    pub(super) fn new(lexemes: &'l [Lexeme<'input>]) -> Self {
-        Self { lexemes, cursor: 0 }
+impl<'t, 'input> Source<'t, 'input> {
+    pub(super) fn new(tokens: &'t [Token<'input>]) -> Self {
+        Self { tokens, cursor: 0 }
     }
 
-    pub(super) fn next_lexeme(&mut self) -> Option<&'l Lexeme<'input>> {
+    pub(super) fn next_token(&mut self) -> Option<&'t Token<'input>> {
         self.eat_trivia();
 
-        let lexeme = self.lexemes.get(self.cursor)?;
+        let token = self.tokens.get(self.cursor)?;
         self.cursor += 1;
 
-        Some(lexeme)
+        Some(token)
     }
 
     pub(super) fn peek_kind(&mut self) -> Option<RawToken> {
@@ -32,14 +32,12 @@ impl<'l, 'input> Source<'l, 'input> {
         }
     }
 
-    // Is the current cursored lexeme trivia?
+    // Is the current cursored token trivia?
     fn at_trivia(&self) -> bool {
         self.peek_kind_raw().map_or(false, RawToken::is_trivia)
     }
 
     fn peek_kind_raw(&self) -> Option<RawToken> {
-        self.lexemes
-            .get(self.cursor)
-            .map(|Lexeme { kind, .. }| *kind)
+        self.tokens.get(self.cursor).map(|Token { kind, .. }| *kind)
     }
 }

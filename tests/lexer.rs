@@ -1,11 +1,11 @@
-use juliafmt::lexer::{Lexeme, Lexer, RawToken};
+use juliafmt::lexer::{Lexer, RawToken, Token};
 use logos::Logos;
 
 fn check(input: &str, token: RawToken) {
     let mut lexer = Lexer::new(input);
     assert_eq!(
         lexer.next(),
-        Some(Lexeme {
+        Some(Token {
             kind: token,
             text: input
         })

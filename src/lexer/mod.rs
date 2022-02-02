@@ -237,7 +237,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Lexeme<'a>;
+    type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let kind = self.inner.next()?;
@@ -247,7 +247,7 @@ impl<'a> Iterator for Lexer<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Lexeme<'a> {
+pub struct Token<'a> {
     pub kind: RawToken,
     pub text: &'a str,
 }

@@ -1,22 +1,22 @@
 use super::event::Event;
-use crate::lexer::Lexeme;
+use crate::lexer::Token;
 use crate::syntax::JuliaLanguage;
 use rowan::{GreenNode, GreenNodeBuilder, Language};
 use std::mem;
 
-// The sink holds its own copy of the lexemes
-pub(super) struct Sink<'l, 'input> {
+// The sink holds its own copy of the tokens
+pub(super) struct Sink<'t, 'input> {
     builder: GreenNodeBuilder<'static>,
-    lexemes: &'l [Lexeme<'input>],
+    tokens: &'t [Token<'input>],
     cursor: usize,
     events: Vec<Event>,
 }
 
-impl<'l, 'input> Sink<'l, 'input> {
-    pub(super) fn new(lexemes: &'l [Lexeme<'input>], events: Vec<Event>) -> Self {
+impl<'t, 'input> Sink<'t, 'input> {
+    pub(super) fn new(tokens: &'t [Token<'input>], events: Vec<Event>) -> Self {
         Self {
             builder: GreenNodeBuilder::new(),
-            lexemes,
+            tokens,
             cursor: 0,
             events,
         }
@@ -66,14 +66,14 @@ impl<'l, 'input> Sink<'l, 'input> {
     }
 
     fn token(&mut self) {
-        let Lexeme { kind, text } = self.lexemes[self.cursor];
+        let Token { kind, text } = self.tokens[self.cursor];
         self.builder.token(JuliaLanguage::kind_to_raw(kind), text);
         self.cursor += 1;
     }
 
     fn eat_trivia(&mut self) {
-        while let Some(lexeme) = self.lexemes.get(self.cursor) {
-            if !lexeme.kind.is_trivia() {
+        while let Some(token) = self.tokens.get(self.cursor) {
+            if !token.kind.is_trivia() {
                 break;
             }
             self.token();
