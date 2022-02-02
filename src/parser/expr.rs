@@ -69,61 +69,58 @@ impl UnaryOp {
 }
 
 // Raw token to expr tokens
-impl TryFrom<Option<RawToken>> for BinaryOp {
-    type Error = Option<RawToken>;
-    fn try_from(item: Option<RawToken>) -> Result<Self, Self::Error> {
+impl TryFrom<RawToken> for BinaryOp {
+    type Error = RawToken;
+    fn try_from(item: RawToken) -> Result<Self, Self::Error> {
         use BinaryOp::*;
         match item {
-            Some(RawToken::Assignment) => Ok(Assignment),
-            Some(RawToken::Pair) => Ok(Pair),
-            Some(RawToken::Conditional) => Ok(Conditional),
-            Some(RawToken::Or) => Ok(Or),
-            Some(RawToken::And) => Ok(And),
-            Some(RawToken::Comparison) => Ok(Comparison),
-            Some(RawToken::PipeL) => Ok(PipeL),
-            Some(RawToken::PipeR) => Ok(PipeR),
-            Some(RawToken::Colon) => Ok(Colon),
-            Some(RawToken::Plus) => Ok(Plus),
-            Some(RawToken::Times) => Ok(Times),
-            Some(RawToken::Rational) => Ok(Rational),
-            Some(RawToken::Bitshift) => Ok(Bitshift),
-            Some(RawToken::Power) => Ok(Power),
-            Some(RawToken::Decl) => Ok(Decl),
-            Some(RawToken::Dot) => Ok(Dot),
+            RawToken::Assignment => Ok(Assignment),
+            RawToken::Pair => Ok(Pair),
+            RawToken::Conditional => Ok(Conditional),
+            RawToken::Or => Ok(Or),
+            RawToken::And => Ok(And),
+            RawToken::Comparison => Ok(Comparison),
+            RawToken::PipeL => Ok(PipeL),
+            RawToken::PipeR => Ok(PipeR),
+            RawToken::Colon => Ok(Colon),
+            RawToken::Plus => Ok(Plus),
+            RawToken::Times => Ok(Times),
+            RawToken::Rational => Ok(Rational),
+            RawToken::Bitshift => Ok(Bitshift),
+            RawToken::Power => Ok(Power),
+            RawToken::Decl => Ok(Decl),
+            RawToken::Dot => Ok(Dot),
             tok => Err(tok),
         }
     }
 }
 
-impl TryFrom<Option<RawToken>> for UnaryOp {
-    type Error = Option<RawToken>;
-    fn try_from(item: Option<RawToken>) -> Result<Self, Self::Error> {
+impl TryFrom<RawToken> for UnaryOp {
+    type Error = RawToken;
+    fn try_from(item: RawToken) -> Result<Self, Self::Error> {
         use UnaryOp::*;
         match item {
-            Some(RawToken::Plus) => Ok(Plus),
-            Some(RawToken::Not) => Ok(Not),
-            Some(RawToken::Radical) => Ok(Radical),
+            RawToken::Plus => Ok(Plus),
+            RawToken::Not => Ok(Not),
+            RawToken::Radical => Ok(Radical),
             tok => Err(tok),
         }
     }
 }
 
-pub(super) fn expr(p: &mut Parser) {
-    expr_binding_power(p, 0);
+pub(super) fn expr(p: &mut Parser) -> Option<CompletedMarker> {
+    expr_binding_power(p, 0)
 }
 
-fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
-    let mut lhs = if let Some(lhs) = lhs(p) {
-        lhs
-    } else {
-        return; //Handle errors?
-    };
+fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) -> Option<CompletedMarker> {
+    let mut lhs = lhs(p)?;
 
     loop {
         // Grab from the precedence table
-        let op: BinaryOp = match p.peek().try_into() {
-            Ok(x) => x,
-            Err(_) => return,
+        let op: BinaryOp = if let Ok(op) = p.peek()?.try_into() {
+            op
+        } else {
+            break;
         };
 
         // Destructure binding power
@@ -131,7 +128,7 @@ fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
 
         // Recursion base case
         if left_binding_power < minimum_binding_power {
-            return;
+            break;
         }
 
         // Eat the token, nom nom nom
@@ -142,6 +139,8 @@ fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
         expr_binding_power(p, right_binding_power);
         lhs = m.complete(p, RawToken::InfixExpr);
     }
+
+    Some(lhs)
 }
 
 fn lhs(p: &mut Parser) -> Option<CompletedMarker> {
@@ -172,16 +171,16 @@ fn literal(p: &mut Parser) -> CompletedMarker {
     m.complete(p, RawToken::Literal)
 }
 
+/// # Panic
+/// p.next() must  be a `UnaryOp`
 fn prefix_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
 
-    let op: UnaryOp = match p.peek().try_into() {
-        Ok(x) => x,
-        Err(t) => match t {
-            Some(_) => panic!("Expected a unary operator"),
-            _ => unreachable!(),
-        },
-    };
+    let op: UnaryOp = p
+        .peek()
+        .expect("Called prefix_expr when the next token None")
+        .try_into()
+        .expect("Expected UnaryOp");
 
     let ((), right_binding_power) = op.binding_power();
     // Eat the token
