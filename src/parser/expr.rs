@@ -69,17 +69,19 @@ pub(super) fn expr(p: &mut Parser) {
 }
 
 fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
-    // Create the checkpoint so we can backtrack
-    let checkpoint = p.checkpoint();
     // All the things that can be on either side of a binary operator
-    match p.peek() {
+    let mut lhs = match p.peek() {
         Some(RawToken::Identifier)
         | Some(RawToken::Integer)
         | Some(RawToken::Hex)
         | Some(RawToken::Octal)
         | Some(RawToken::Binary)
         | Some(RawToken::Float)
-        | Some(RawToken::Exponential) => p.bump(),
+        | Some(RawToken::Exponential) => {
+            let m = p.start();
+            p.bump();
+            m.complete(p, RawToken::Literal)
+        }
         // Prefix operators
         Some(RawToken::Plus) | Some(RawToken::Not) | Some(RawToken::Radical) => {
             let op = match p.peek() {
@@ -88,15 +90,17 @@ fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
                 Some(RawToken::Radical) => PrefixOp::Radical,
                 _ => return, // we’ll handle errors later.
             };
+            let m = p.start();
             let ((), right_binding_power) = op.binding_power();
             // Eat the token
             p.bump();
-            p.start_node_at(checkpoint, RawToken::UnaryExpr);
+
             expr_binding_power(p, right_binding_power);
-            p.finish_node();
+            m.complete(p, RawToken::UnaryExpr)
         }
         // Parentheticals
         Some(RawToken::LParen) => {
+            let m = p.start();
             // Consume the LParen
             p.bump();
             // A paren "resets" operator precedence, so we can just recur
@@ -105,9 +109,10 @@ fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
             assert_eq!(p.peek(), Some(RawToken::RParen));
             // Consume the closing paren
             p.bump();
+            m.complete(p, RawToken::Parenthetical)
         }
-        _ => {}
-    }
+        _ => unreachable!(),
+    };
     loop {
         // Grab from the precedence table
         let op = match p.peek() {
@@ -142,8 +147,8 @@ fn expr_binding_power(p: &mut Parser, minimum_binding_power: u8) {
         p.bump();
 
         // Recurse
-        p.start_node_at(checkpoint, RawToken::BinaryExpr);
+        let m = lhs.precede(p);
         expr_binding_power(p, right_binding_power);
-        p.finish_node();
+        lhs = m.complete(p, RawToken::BinaryExpr);
     }
 }

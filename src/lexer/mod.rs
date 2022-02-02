@@ -2,34 +2,8 @@ use logos::Logos;
 use num_derive::{FromPrimitive, ToPrimitive};
 
 // Identifiers are pretty cursed, I generated the best regex I could to match them
-// function gen_range_re(s,e)
-// 	if s == e
-// 		return "\\u{$(string(s,base=16))}"
-// 	else
-// 		return "[\\u{$(string(s,base=16))}-\\u{$(string(e,base=16))}]"
-// 	end
-// end
-// interleave(args...) = collect(Iterators.flatten(zip(args...)))
-// intersperse(A,c) = interleave(A,repeat(c,length(A)))[1:end-1]
-// function gen_id_start_re()
-//    range = 67:0x10FFFF
-//    ranges = String[]
-//    range_start = 65
-//    last_good = 66
-//    for c ∈ range
-// 	   if Base.is_id_char(Char(c))
-// 		   if c !== last_good + 1
-// 			   push!(ranges,gen_range_re(range_start,last_good))
-// 			   range_start = last_good = c
-// 		   else
-// 			   last_good = c
-// 		   end
-// 	   end
-//    end
-//    return ranges
-// end
-// string(intersperse(gen_id_start_re(),"|")...) |> println
-
+// Using the julia file included
+//
 // We're deriving the *Primitive stuff here to provide seamless conversion
 // to rowan's types
 #[derive(
@@ -43,6 +17,8 @@ pub enum RawToken {
     Root,
     BinaryExpr,
     UnaryExpr,
+    Literal,
+    Parenthetical,
     // Lexing
     #[error]
     Error,

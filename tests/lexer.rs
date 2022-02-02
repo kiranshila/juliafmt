@@ -3,7 +3,13 @@ use logos::Logos;
 
 fn check(input: &str, token: RawToken) {
     let mut lexer = Lexer::new(input);
-    assert_eq!(lexer.next(), Some(Lexeme { kind, text: input }));
+    assert_eq!(
+        lexer.next(),
+        Some(Lexeme {
+            kind: token,
+            text: input
+        })
+    );
 }
 
 fn check_stream(input: &str, tokens: Vec<RawToken>) {

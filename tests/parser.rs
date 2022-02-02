@@ -8,15 +8,12 @@ fn check(input: &str, expected_tree: expect_test::Expect) {
 }
 
 #[test]
-fn parse_nothing() {
-    check("", expect![[r#"Root@0..0"#]]);
-}
-
-#[test]
 fn parse_numbers() {
     check(
         "123",
-        expect![[r#"Root@0..3
-  Integer@0..3 "123""#]],
+        expect![[r#"
+            Root@0..3
+              Literal@0..3
+                Integer@0..3 "123""#]],
     );
 }

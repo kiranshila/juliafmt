@@ -1,5 +1,6 @@
 mod event;
 mod expr;
+mod marker;
 mod sink;
 mod source;
 
@@ -7,6 +8,7 @@ use crate::lexer::{Lexeme, Lexer, RawToken};
 use crate::syntax::SyntaxNode;
 use event::Event;
 use expr::expr;
+use marker::Marker;
 use rowan::GreenNode;
 use sink::Sink;
 use source::Source;
@@ -47,27 +49,16 @@ impl<'l, 'input> Parser<'l, 'input> {
 
     // The parser itself returns the event vector to be processed by the top level function parse
     pub fn parse(mut self) -> Vec<Event> {
-        self.start_node(RawToken::Root);
+        let m = self.start();
         expr(&mut self);
-        self.finish_node();
+        m.complete(&mut self, RawToken::Root);
         self.events
     }
 
-    // Some utilities for the start and finish nodes
-    pub fn start_node_at(&mut self, checkpoint: usize, kind: RawToken) {
-        self.events.push(Event::StartNodeAt { kind, checkpoint });
-    }
-
-    pub fn checkpoint(&self) -> usize {
-        self.events.len()
-    }
-
-    pub fn start_node(&mut self, kind: RawToken) {
-        self.events.push(Event::StartNode { kind });
-    }
-
-    pub fn finish_node(&mut self) {
-        self.events.push(Event::FinishNode);
+    fn start(&mut self) -> Marker {
+        let pos = self.events.len();
+        self.events.push(Event::Placeholder);
+        Marker::new(pos)
     }
 }
 

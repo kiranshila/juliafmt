@@ -1,10 +1,16 @@
 use crate::lexer::RawToken;
 
 // Event-driven parser that we will collect and apply
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Event {
-    StartNode { kind: RawToken },
-    StartNodeAt { kind: RawToken, checkpoint: usize },
-    AddToken { kind: RawToken, text: String },
+    StartNode {
+        kind: RawToken,
+        forward_parent: Option<usize>,
+    },
+    AddToken {
+        kind: RawToken,
+        text: String,
+    },
     FinishNode,
+    Placeholder,
 }
