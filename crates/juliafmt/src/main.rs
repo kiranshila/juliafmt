@@ -1,7 +1,8 @@
 use clap::Parser as CParser;
 use lexer::Lexer;
 use parser::parse;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
+use std::str::from_utf8;
 
 #[derive(CParser, Debug)]
 #[clap(author,version,about,long_about = None)]
@@ -15,10 +16,10 @@ struct Args {
 }
 
 fn main() -> io::Result<()> {
-    let stdin = io::stdin();
+    let mut stdin = io::stdin();
     let args = Args::parse();
     let mut stdout = io::stdout();
-    let mut input = String::new();
+    let mut input = Vec::new();
 
     let prompt = if args.ast { "parser> " } else { "lexer> " };
 
@@ -26,13 +27,16 @@ fn main() -> io::Result<()> {
         write!(stdout, "{}", prompt)?;
         stdout.flush()?;
 
-        stdin.read_line(&mut input)?;
+        stdin.read_to_end(&mut input)?;
+
+        // Create string representation
+        let in_str = from_utf8(&input).unwrap();
 
         if args.ast {
-            let parse = parse(&input);
+            let parse = parse(in_str);
             println!("{}", parse.debug_tree());
         } else {
-            let lex: Vec<_> = Lexer::new(&input).inner.spanned().collect();
+            let lex: Vec<_> = Lexer::new(in_str).inner.spanned().collect();
             println!("\n{:?}", lex);
         }
 
