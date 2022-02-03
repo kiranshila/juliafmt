@@ -1,0 +1,9 @@
+[package]
+authors = ["Kiran Shila <me@kiranshila.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+name = "format"
+version = "0.1.0"
+
+[dependencies]
+pretty = "0.11"

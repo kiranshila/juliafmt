@@ -1,11 +1,12 @@
-use super::event::Event;
-use crate::lexer::Token;
-use crate::syntax::JuliaLanguage;
-use rowan::{GreenNode, GreenNodeBuilder, Language};
+use crate::event::Event;
+use crate::Parse;
+use lexer::Token;
+use rowan::{GreenNodeBuilder, Language};
 use std::mem;
+use syntax::{JuliaLanguage, SyntaxKind};
 
 // The sink holds its own copy of the tokens
-pub(super) struct Sink<'t, 'input> {
+pub(crate) struct Sink<'t, 'input> {
     builder: GreenNodeBuilder<'static>,
     tokens: &'t [Token<'input>],
     cursor: usize,
@@ -22,7 +23,7 @@ impl<'t, 'input> Sink<'t, 'input> {
         }
     }
 
-    pub(super) fn finish(mut self) -> GreenNode {
+    pub(super) fn finish(mut self) -> Parse {
         for idx in 0..self.events.len() {
             match mem::replace(&mut self.events[idx], Event::Placeholder) {
                 Event::StartNode {
@@ -62,20 +63,27 @@ impl<'t, 'input> Sink<'t, 'input> {
             }
             self.eat_trivia();
         }
-        self.builder.finish()
+
+        Parse {
+            green_node: self.builder.finish(),
+        }
     }
 
     fn token(&mut self) {
-        let Token { kind, text } = self.tokens[self.cursor];
-        self.builder.token(JuliaLanguage::kind_to_raw(kind), text);
+        let Token { kind, text, .. } = self.tokens[self.cursor];
+
+        self.builder
+            .token(JuliaLanguage::kind_to_raw(kind.into()), text);
+
         self.cursor += 1;
     }
 
     fn eat_trivia(&mut self) {
         while let Some(token) = self.tokens.get(self.cursor) {
-            if !token.kind.is_trivia() {
+            if !SyntaxKind::from(token.kind).is_trivia() {
                 break;
             }
+
             self.token();
         }
     }

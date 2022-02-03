@@ -1,0 +1,17 @@
+[package]
+authors = ["Kiran Shila <me@kiranshila.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+name = "lexer"
+version = "0.1.0"
+
+[dependencies]
+logos = "0.12"
+
+[dev-dependencies]
+criterion = "0.3"
+walkdir = "2.3"
+
+[[bench]]
+name = "benchmark"
+harness = false

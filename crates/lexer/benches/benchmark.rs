@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use juliafmt::lexer::{Lexer, RawToken};
+use lexer::{Lexer, TokenKind};
 use std::fs;
 use walkdir::WalkDir;
 
@@ -7,7 +7,7 @@ fn lex_until_error(s: String) -> Result<(u64, u64), String> {
     let mut tokens = 0u64;
     let mut errors = 0u64;
     for (token, span) in Lexer::new(&s).inner.spanned() {
-        if token == RawToken::Error {
+        if token == TokenKind::Error {
             errors += 1;
             let sp = span.clone();
             return Err(format!(

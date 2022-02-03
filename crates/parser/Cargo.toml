@@ -1,0 +1,15 @@
+[package]
+authors = ["Kiran Shila <me@kiranshila.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+name = "parser"
+version = "0.1.0"
+
+[dependencies]
+drop_bomb = "0.1"
+rowan = "0.15"
+lexer = {path = "../lexer"}
+syntax = {path = "../syntax"}
+
+[dev-dependencies]
+expect-test = "1.2"

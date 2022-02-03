@@ -1,0 +1,13 @@
+[package]
+name = "juliafmt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Arg Parsing
+clap = { version = "3.0", features = ["derive","color"]}
+toml = "0.5"
+serde = { version = "1.0", features = ["derive"]}
+# Local Crates
+lexer = {path = "../lexer"}
+parser = {path = "../parser"}
