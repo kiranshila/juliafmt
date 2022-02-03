@@ -326,4 +326,33 @@ mod tests {
                         Whitespace@11..12 " ""#]],
         );
     }
+
+    #[test]
+    fn parse_binary_expression_interspersed_with_comments() {
+        check(
+            "1 + # What's next?
+2 + # Add Two
+3 # Add three",
+            expect![[r##"
+                Root@0..46
+                  InfixExpr@0..46
+                    InfixExpr@0..21
+                      Literal@0..2
+                        Integer@0..1 "1"
+                        Whitespace@1..2 " "
+                      Plus@2..3 "+"
+                      Whitespace@3..4 " "
+                      InlineComment@4..19 "# What's next?\n"
+                      Literal@19..21
+                        Integer@19..20 "2"
+                        Whitespace@20..21 " "
+                    Plus@21..22 "+"
+                    Whitespace@22..23 " "
+                    InlineComment@23..33 "# Add Two\n"
+                    Literal@33..46
+                      Integer@33..34 "3"
+                      Whitespace@34..35 " "
+                      InlineComment@35..46 "# Add three""##]],
+        )
+    }
 }
